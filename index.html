@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Лист персонажа</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --gold:#e0bd6e; --gold-dim:#a88a4c; --text:#e8dfc6; --muted:#9e957f;
+  --ink:#3a2716; --ink-soft:#6b5236; --blood:#b8554c;
+  --bg:#05060a; --panel:#10131b;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%;background:var(--bg)}
+body{margin:0;min-height:100%;color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  background:var(--bg) url(texture.webp) repeat;background-size:256px;overscroll-behavior-y:none}
+body.modal-open{overflow:hidden}
+html,body{height:100%;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+button:disabled{cursor:default}
+.hidden{display:none!important}
+body.locked .edit-only{display:none!important}
+:focus{outline:none}
+body.kbd :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.pages{position:fixed;left:0;right:0;top:0;bottom:calc(84px + var(--safe-b));overflow:hidden;touch-action:pan-y}
+.page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;transition:transform .3s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.page-in{max-width:520px;margin:0 auto;padding:calc(10px + var(--safe-t)) 10px 96px}
+.page-in>:first-child{margin-top:0}
+
+/* ---------- кнопки ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;min-width:44px;padding:2px 4px;
+  border-style:solid;border-width:9px 13px;border-image:url(button.webp) 58 86 fill / 9px 13px stretch;
+  color:#f1dfae;font-weight:600;font-size:14px;line-height:1.15;text-align:center;text-shadow:0 1px 2px #000}
+.btn{transition:transform .08s,filter .08s}
+.pressed{transform:translateY(1px) scale(.97);filter:brightness(.78)!important}
+.btn.pressed{filter:brightness(1.35)!important}
+.btn:disabled{opacity:.45;filter:grayscale(.6)}
+.btn.danger{color:#ffab9e}
+.btn-sm{min-height:36px;font-size:13px;padding:2px 6px}
+.btn-row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:10px}
+.x-btn{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:#c98f86;font-size:16px;flex:none}
+.link-btn{color:var(--gold);text-decoration:underline;padding:6px 0;font-size:14px}
+.icon-btn{width:44px;height:44px;padding:0;border-width:9px 11px;border-image-width:9px 11px}
+.icon-btn svg{width:18px;height:18px;flex:none}
+
+/* ---------- шапка ---------- */
+.topbar{position:relative;display:flex;align-items:center;justify-content:space-between;height:74px;padding:0 22px 0 26px;margin-bottom:8px;
+  background:url(header.webp) center/100% 100% no-repeat}
+.lock-btn{width:44px;height:52px;display:flex;align-items:center;justify-content:center}
+.lock-btn img{height:44px;width:auto;display:none;filter:drop-shadow(0 2px 3px #000)}
+.lock-btn .lock-open{display:block}
+.lock-btn.locked .lock-open{display:none}
+.lock-btn.locked .lock-closed{display:block}
+.menu-btn{width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:#f0cf7c;filter:drop-shadow(0 0 5px rgba(240,200,110,.55)) drop-shadow(0 1px 1px #000)}
+.menu-btn svg{width:26px;height:26px}
+.menu{position:absolute;right:6px;top:66px;z-index:40;width:min(300px,86vw);padding:6px;border-style:solid;border-width:12px 14px;
+  border-image:url(frame-teal.webp) 60 70 fill / 12px 14px stretch;background:#0c0f17;box-shadow:0 14px 30px #000c}
+.menu-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:8px 10px;border-radius:8px;text-align:left;font-size:15px}
+.menu-item.danger{color:#f0a090}
+.menu-sep{height:1px;margin:6px 4px;background:#3a3222}
+.menu-note{margin:6px 10px 4px;font-size:12px;color:var(--muted)}
+.switch{position:relative;flex:none;width:40px;height:22px;border-radius:11px;background:#2b2f3b;border:1px solid #4a3d24}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#8a8270;transition:left .2s}
+.switch.on{background:#6b4f1c}.switch.on::after{left:20px;background:var(--gold)}
+
+/* ---------- рамки ---------- */
+.frame{position:relative;margin:10px 0;padding:10px 12px;border:20px solid transparent;
+  border-image:url(square.webp) 62 fill / 20px stretch}
+.frame::before{content:"";position:absolute;inset:-20px;border:20px solid transparent;pointer-events:none;
+  border-image:url(square.webp) 62 / 20px stretch;filter:brightness(1.8) saturate(1.15)}
+h2{margin:0 0 10px;font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.01em}
+.sec-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.sec-head .btn{flex:none;margin-left:auto}
+.sec-head h2{margin:0}
+.divider{height:22px;margin:4px 6%;background:url(divider.webp) center/100% 100% no-repeat}
+.label{font-size:13px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;margin:4px 0}
+
+/* ---------- имя ---------- */
+.nameplate{height:58px;display:flex;align-items:center;padding:0 9%;background:url(nameplate.webp) center/100% 100% no-repeat}
+.nameplate input{width:100%;background:none;border:0;text-align:center;color:var(--gold);font-size:21px;font-weight:700;
+  text-shadow:0 1px 3px #000;outline:none}
+.nameplate input::placeholder{color:#8f7a4f;font-weight:600}
+
+/* ---------- поля ---------- */
+.field{margin-bottom:12px}
+.field-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:34px}
+.field-head label{font-size:13px;color:var(--muted)}
+select.pick,.text-input{width:100%;height:46px;border:0;padding:0 34px 0 18px;appearance:none;-webkit-appearance:none;
+  background:url(select.webp) center/100% 100% no-repeat;color:var(--text);font-size:15px;text-overflow:ellipsis}
+.text-input{background-image:url(nameplate.webp);padding:0 16px;margin-top:6px}
+select.pick:disabled,.text-input[readonly]{opacity:1;color:var(--text)}
+body.locked select.pick{background-image:url(nameplate.webp);padding-right:18px}
+option{background:#141824;color:var(--text)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;height:34px;max-width:72%;padding:0 16px;font-size:13px;font-weight:600;
+  background:url(pill.webp) center/100% 100% no-repeat}
+.pill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill svg{width:15px;height:15px;flex:none}
+.pill.mut{color:#b7a3d0}
+.pill.crisis{color:#cf8f86}
+
+/* ---------- уровень и опыт ---------- */
+.sec-sub{margin:-6px 0 10px;font-size:12px;color:var(--muted)}
+.level-row{display:flex;flex-direction:column;align-items:center;margin:6px 0 10px}
+.stepper{position:relative;width:230px;height:62px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+  background:url(capsule.webp) center/100% 100% no-repeat}
+.stepper .step{width:44px;height:44px;font-size:24px;font-weight:700;color:var(--gold)}
+.stepper .step:disabled{opacity:.3}
+.medallion{position:absolute;left:50%;top:50%;width:76px;height:76px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;
+  background:url(medallion.webp) center/contain no-repeat;font-size:26px;font-weight:800;color:#f6e3ae;text-shadow:0 2px 3px #000}
+body.locked .stepper{width:90px;background:none}
+.meter-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;margin-bottom:4px}
+.meter-name{color:var(--muted)}
+.meter-val{font-weight:700;font-variant-numeric:tabular-nums}
+.bar{position:relative;height:22px;background:url(bar.webp) center/100% 100% no-repeat}
+.fill{position:absolute;left:3.5%;top:30%;bottom:30%;border-radius:4px;max-width:93%;transition:width .3s}
+.bar .fill{width:0}
+.fill-xp{background:linear-gradient(90deg,#8c6a2c,#e3c173)}
+.fill-hp{background:linear-gradient(90deg,#7b1f1a,#d0493b)}
+.fill-mp-martial{background:linear-gradient(90deg,#7a4a14,#e09a3a)}
+.fill-mp-caster{background:linear-gradient(90deg,#1f4f6e,#4fb0d6)}
+.fill-mp-hybrid{background:linear-gradient(90deg,#4b2c6e,#9c6ad0)}
+.fill-mp-custom,.fill-mp-none{background:linear-gradient(90deg,#3d4a3a,#8aa07a)}
+.xp-add{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px;align-items:center}
+.xp-add input{margin:0}
+
+/* ---------- характеристики ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;position:relative}
+.stat{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:112px;padding:14px 6px 12px;
+  background:url(stat.webp) center/100% 100% no-repeat;cursor:pointer;text-align:center}
+.stat.open{z-index:16}
+.stat-name{font-size:13px;color:var(--muted)}
+.stat-total{font-size:28px;font-weight:800;color:#f3e2b3;line-height:1.1}
+.stat-mod{margin-top:4px;padding:2px 8px;border-radius:999px;background:#0d1018;border:1px solid #4a3d24;font-size:12px;font-weight:700;color:var(--gold);max-width:100%;text-align:center;line-height:1.2}
+.stat-drop{position:absolute;left:6px;right:6px;top:calc(100% - 12px);overflow:hidden;max-height:0;transition:max-height .3s ease;
+  background:#121722;border:1px solid transparent;border-top:0;border-radius:0 0 10px 10px}
+.stat.open .stat-drop{max-height:180px;border-color:#5b4a2c;box-shadow:0 12px 20px #000b}
+.stat-drop-in{display:flex;flex-direction:column;gap:3px;padding:14px 6px 10px;font-size:12px;color:#d8cba6}
+.stat-more{margin-top:4px;color:var(--gold);text-decoration:underline;font-size:12px}
+.glow{animation:glow 1.6s ease-in-out infinite}
+@keyframes glow{0%,100%{filter:drop-shadow(0 0 0 rgba(240,200,110,0))}50%{filter:drop-shadow(0 0 8px rgba(240,200,110,.8))}}
+
+/* ---------- черты ---------- */
+.trait-row{display:flex;align-items:center;gap:4px;margin-bottom:6px;border-style:solid;border-width:10px 12px;
+  border-image:url(frame-teal.webp) 60 70 fill / 10px 12px stretch}
+.trait-main{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;text-align:left}
+.trait-title{font-weight:600}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid #5b4a2c;color:var(--gold-dim);white-space:nowrap}
+.tag-Мутация{color:#b7a3d0;border-color:#5b4a73}
+.tag-Кризис{color:#cf8f86;border-color:#6e3a35}
+
+/* ---------- бой ---------- */
+.hp-note{margin:6px 0 0;font-size:12px;color:#e3a07a}
+.temp{font-style:normal;color:#8fc0e8;font-size:13px}
+.hud{margin:0 0 10px;padding:4px 2px;border-style:solid;border-width:14px 16px;
+  border-image:url(frame-teal.webp) 60 70 fill / 14px 16px stretch;background:#0b0e15}
+.meter{margin-bottom:10px}
+.meter-name.hp{color:#e07a6e;font-weight:700}
+.mp-caster{color:#6fc0e0}.mp-martial{color:#e2a45a}.mp-hybrid{color:#b48ade}
+.hud-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.hud-stat{display:flex;flex-direction:column;align-items:center;padding:6px 2px;border-radius:10px;background:#141925;border:1px solid #2e3544}
+.hud-stat span{font-size:11px;color:var(--muted)}
+.hud-stat b{font-size:17px;color:#f3e2b3}
+.card{display:flex;align-items:center;gap:8px;margin-bottom:8px;border-style:solid;border-width:14px 22px;
+  border-image:url(plaque-gems.webp) 70 110 fill / 14px 22px stretch}
+.card.dim{opacity:.55}
+.card-main{flex:1;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0}
+.card-sub{font-size:13px;color:#cdbf9b}
+.card-note{font-size:12px;color:var(--muted)}
+.card-note.bad,.card-warn{font-size:12px;color:#f0a58f}
+.src{font-size:11px;font-weight:600;color:var(--gold-dim);margin-left:4px}
+.card-sub em.on{font-style:normal;color:#9fd08a}
+.effects{margin:0 0 10px}
+.plaque{margin-bottom:8px;padding:2px;border-style:solid;border-width:10px 12px;border-image:url(frame-teal.webp) 60 70 fill / 10px 12px stretch}
+.plaque.beast{border-image-source:url(plaque-gems.webp);border-image-slice:70 110 fill;border-width:14px 22px}
+.plaque-head{display:flex;align-items:center;gap:8px;min-height:36px}
+.plaque-head b{flex:1;color:#f1dfae}
+.plaque-title{flex:1;text-align:left}
+.plaque-val{font-size:13px;color:#cdbf9b;white-space:nowrap}
+.plaque-desc{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.btn.mini{min-width:0;min-height:34px;padding:0 4px;font-size:13px}
+.bar.small{height:16px;margin-top:4px}
+.charges{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#cdbf9b}
+.charge-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pips{display:flex;gap:3px;flex-wrap:wrap}.pips i{width:10px;height:10px;border-radius:50%;border:1px solid #6b5a36}.pips i.on{background:var(--gold)}
+.toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));z-index:60;width:min(500px,calc(100vw - 20px));transform:translate(-50%,16px);opacity:0;pointer-events:none;
+  padding:12px 14px;border-radius:12px;background:#10141e;border:1px solid #6b5a36;border-left:4px solid var(--gold);box-shadow:0 10px 26px #000c;font-size:15px;line-height:1.4;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast-heal{border-left-color:#8fcf7d}.toast-spell{border-left-color:#78b4ee}.toast-error{border-left-color:#e07a6e}
+.card .btn{flex:none;min-width:96px}
+.log-line{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #232834;font-size:14px}
+.log-line time{color:var(--muted);font-size:12px;flex:none;padding-top:1px;font-variant-numeric:tabular-nums}
+.log-heal span{color:#9fd08a}.log-spell span{color:#9cc7ec}.log-error span{color:#ef9a8f}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 12px;border-radius:999px;background:#141925;border:1px solid #4a3d24;color:#e3d3a8;font-size:13px}
+
+/* ---------- инвентарь ---------- */
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.slot{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:2px;text-align:left;border-style:solid;border-width:10px 12px;
+  border-image:url(frame-teal.webp) 60 70 fill / 10px 12px stretch}
+.slot-name{font-size:12px;color:var(--muted)}
+.slot-item{font-size:14px;font-weight:600}
+.slot:not(.filled) .slot-item{color:#6f6a5c;font-weight:400}
+.equip-sum{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.warn-list{margin:8px 0 0;padding-left:18px;color:#ef9a8f;font-size:13px}
+.warn{color:#ef9a8f;font-size:13px;margin:6px 0 0}
+.coins{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.coin{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:10px;background:#0c0e14;border:1px solid #3a3222}
+.coin img{width:26px;height:auto;flex:none}
+.coin input{width:100%;min-width:0;background:none;border:0;font-weight:700;font-size:15px}
+.add-item{display:flex;flex-direction:column;gap:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row2 .text-input,.row2 select.pick{margin:0}
+.search-wrap{position:relative}
+.search-wrap .text-input{margin:0}
+.suggest{position:absolute;left:0;right:0;top:100%;z-index:20;margin-top:2px;background:#10131b;border:1px solid #5b4a2c;border-radius:10px;overflow:hidden;box-shadow:0 8px 20px #000a}
+.sugg{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:9px 12px;text-align:left;border-bottom:1px solid #232834}
+.sugg span{font-size:12px;color:var(--muted)}
+.ref-chip{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:10px;background:#172019;border:1px solid #3d5a3a;font-size:13px}
+.ref-chip span{flex:1}
+.small-note{font-size:12px;color:var(--muted);margin:0}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;scrollbar-width:none}
+.filter{flex:none;padding:6px 12px;border-radius:999px;border:1px solid #3a3222;color:var(--muted);font-size:13px}
+.filter.on{color:#15110a;background:var(--gold);border-color:var(--gold);font-weight:700}
+.item{display:flex;flex-direction:column;gap:6px;margin-bottom:6px;border-style:solid;border-width:10px 12px;
+  border-image:url(frame-teal.webp) 60 70 fill / 10px 12px stretch}
+.item.equipped{filter:brightness(1.15)}
+.item-main{display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.item-name{font-weight:700}
+.item-name em{font-style:normal;font-size:11px;font-weight:600;color:#9fd08a;margin-left:4px}
+.item-sub{font-size:12px;color:var(--muted)}
+.item-ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.item-ctrl .btn{flex:1 1 96px}
+.qty{display:flex;align-items:center;border:1px solid #3a3222;border-radius:10px;overflow:hidden}
+.qty button{width:36px;height:36px;font-size:18px;color:var(--gold)}
+.qty span{min-width:26px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.rar-common{color:#e8dfc6}.rar-uncommon{color:#8fd48a}.rar-rare{color:#78b4ee}.rar-epic{color:#c79af0}
+
+/* ---------- нижняя панель ---------- */
+.nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:30;width:100%;max-width:520px;
+  display:grid;grid-template-columns:repeat(3,1fr);height:calc(84px + var(--safe-b));padding:15px 0 calc(9px + var(--safe-b));
+  background:url(nav.webp) center top/100% 84px no-repeat,#0b0d14}
+.nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:var(--muted)}
+.nav img{height:32px;width:auto}
+.nav .on-img{display:none}
+.nav .off-img{opacity:.5}
+.nav button.active{color:var(--gold);font-weight:700}
+.nav button.active .on-img{display:block}
+.nav button.active .off-img{display:none}
+
+/* ---------- свиток ---------- */
+.modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:10px}
+.modal-backdrop{position:absolute;inset:0;background:rgba(3,4,8,.82)}
+.scroll{position:relative;z-index:1;display:flex;flex-direction:column;width:min(96vw,470px);max-height:88vh;max-height:88dvh;
+  border-style:solid;border-width:38px 40px 36px 40px;border-image:url(scroll.webp) 96 100 90 100 fill / 38px 40px 36px 40px stretch;
+  filter:drop-shadow(0 10px 24px #000)}
+.roller{z-index:3;display:none;position:absolute;left:-40px;right:-40px;top:-38px;height:36px;pointer-events:none;border-style:solid;border-width:0 40px;border-image:url(scroll-bottom.webp) 0 100 fill / 0 40px stretch}
+.scroll-body{overflow-y:auto;overscroll-behavior:contain;padding:10px 20px 8px 22px;color:var(--ink);-webkit-overflow-scrolling:touch}
+.scroll-tag{display:inline-block;font-size:12px;color:#7a5a2e;border:1px solid #b08c55;border-radius:999px;padding:1px 10px;margin-bottom:6px}
+.scroll-title{margin:0 0 8px;font-size:20px;color:#5a2e10;line-height:1.2}
+.scroll-text{font-size:15px}
+.scroll-text p{margin:0 0 8px}
+.scroll-text h4{margin:12px 0 6px;font-size:14px;color:#6b3a12}
+.plain-list{margin:0 0 8px;padding-left:18px}
+.plain-list li{margin-bottom:3px}
+.perk{padding:8px 10px;margin-bottom:6px;border-radius:8px;background:rgba(120,80,30,.1);border:1px solid rgba(120,80,30,.25)}
+.perk p{margin:4px 0 0}
+.perk-tag{font-size:11px;color:#8a6a3e}
+.muted{color:var(--ink-soft);font-size:14px}
+.up{color:#2f6b24;font-weight:700}
+.scroll .link-btn{color:#7a2e12}
+.term,.feat,.option{cursor:pointer}
+.draft{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.draft-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px}
+.draft-name{font-weight:600}
+.draft-tot{font-size:13px;min-width:78px;text-align:right}
+.paper-input.small{width:74px;padding:6px 8px}
+.qty.paper{border-color:#9c7a48}.qty.paper button{color:#6b3a12}.qty.paper span{min-width:30px}
+.qty button:disabled{opacity:.35}
+.roll-inputs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.back-link{color:#6b3a12;font-size:14px;margin-bottom:6px;text-decoration:underline}
+.term{display:inline;font:inherit;color:inherit;border-bottom:1px dashed currentColor;padding:0;line-height:inherit}
+.scroll .term{color:#7a2e12}
+.app .term{color:var(--gold)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.seg-btn{padding:10px 6px;border-radius:10px;border:1px solid #b08c55;color:var(--ink);font-weight:600;font-size:14px}
+.seg-btn.on{background:#6b3a12;color:#f6e7c2;border-color:#6b3a12}
+.asi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.asi-btn{position:relative;display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:10px;border:1px solid #b08c55;color:var(--ink)}
+.asi-btn b{font-size:20px}
+.asi-btn i{position:absolute;top:4px;right:6px;font-style:normal;font-size:12px;font-weight:700;color:#2f6b24}
+.asi-btn.on{background:rgba(47,107,36,.12);border-color:#2f6b24}
+.asi-btn:disabled{opacity:.4}
+.feat-list,.option-list{display:flex;flex-direction:column;gap:6px}
+.feat,.option{display:flex;flex-direction:column;gap:3px;width:100%;padding:10px 12px;margin-bottom:6px;text-align:left;border-radius:10px;border:1px solid #b08c55;color:var(--ink);font-size:14px}
+.feat.on,.option.on{background:rgba(107,58,18,.14);border-color:#6b3a12;box-shadow:inset 0 0 0 1px #6b3a12}
+.option i{font-style:normal;font-weight:700}
+.form label{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;font-size:13px;color:var(--ink-soft)}
+.paper-input{width:100%;padding:9px 10px;border-radius:8px;border:1px solid #9c7a48;background:rgba(255,248,230,.6);color:var(--ink);font-size:15px}
+.form-error{color:#9a2a1c;font-size:13px}
+.pin-dots{display:flex;justify-content:center;gap:14px;margin:6px 0 14px}
+.pin-dots span{width:14px;height:14px;border-radius:50%;border:2px solid #6b3a12}
+.pin-dots span.on{background:#6b3a12}
+.pin-dots.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pin-key{font-size:20px;min-height:50px}
+
+/* ---------- заставка ---------- */
+.splash{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#05060a;transition:opacity .45s}
+.splash.gone{opacity:0;pointer-events:none}
+.splash-art{position:relative;width:min(100vw,calc(100dvh * 937 / 1678));aspect-ratio:937/1678}
+.splash-art img{width:100%;height:100%;display:block}
+.splash-load{position:absolute;left:11.3%;right:12.8%;top:13.62%;height:1.02%;overflow:hidden;border-radius:999px}
+.splash-load i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8c6a2c,#f1d38a);animation:load 2.3s ease-in-out forwards}
+@keyframes load{to{width:100%}}
+
+
+/* ---------- справочник ---------- */
+.kb{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg) url(texture.webp) repeat;background-size:256px}
+.kb-head{flex:none;max-width:520px;width:100%;margin:0 auto;padding:calc(10px + var(--safe-t)) 10px 8px;display:flex;flex-direction:column;gap:8px}
+.kb-top{display:flex;align-items:center;gap:8px;height:52px;padding:0 14px;background:url(header.webp) center/100% 100% no-repeat}
+.kb-top h2{flex:1;margin:0;text-align:center;padding-right:40px}
+.kb-back{width:44px;height:44px;font-size:22px;color:var(--gold)}
+.kb-body{flex:1;overflow-y:auto;overscroll-behavior:contain;max-width:520px;width:100%;margin:0 auto;padding:4px 14px calc(30px + var(--safe-b))}
+.kb-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.kb-sec{min-height:58px;padding:8px;border-style:solid;border-width:10px 12px;border-image:url(frame-teal.webp) 60 70 fill / 10px 12px stretch;font-weight:700;color:#f1dfae}
+.kb-tut{width:100%}
+.kb-link{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:10px 12px;margin-bottom:6px;text-align:left;border-radius:10px;background:#11151f;border:1px solid #2f2a1c}
+.kb-link span{font-size:12px;color:var(--muted)}
+.kb-h{margin:16px 0 8px;font-size:15px;color:var(--gold)}
+.kb-body p{margin:0 0 10px}
+.kb-list{margin:0 0 10px;padding-left:18px}.kb-list li{margin-bottom:4px}
+.kb-table{width:100%;border-collapse:collapse;margin:4px 0 10px;font-size:14px}
+.kb-table td{padding:6px 4px;border-bottom:1px solid #262b36;vertical-align:top}
+.kb-table td:last-child{text-align:right;white-space:nowrap}
+.kb-table.lv td:first-child{width:28px;color:var(--gold);font-weight:700}.kb-table.lv td:last-child{text-align:left;white-space:normal}
+.kb-act{color:#f1dfae}
+.kb-body .perk{background:#11151f;border-color:#2f2a1c}.kb-body .perk-tag{color:var(--muted)}
+.kb-label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);margin-bottom:8px}
+.kb-gen{margin-top:12px;font-size:17px;min-height:30px}
+/* ---------- обучение ---------- */
+.coach{position:fixed;inset:0;z-index:70;pointer-events:none}
+.coach-block{position:fixed;pointer-events:auto;background:transparent;touch-action:none}
+.coach-hole{pointer-events:none;position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(3,4,8,.78),0 0 0 2px var(--gold),0 0 18px rgba(240,200,110,.6);transition:all .25s}
+.coach-bubble{z-index:2;position:fixed;left:12px;right:12px;max-width:496px;margin:0 auto;pointer-events:auto;padding:14px 16px;border-radius:12px;background:#10141e;border:1px solid #6b5a36;box-shadow:0 12px 30px #000c}
+.coach-bubble p{margin:0 0 10px;font-size:15px}
+.coach-btns{display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* ---------- слоты и сравнение ---------- */
+.slot-cur{padding:8px 10px;margin-bottom:6px;border-radius:10px;background:rgba(107,58,18,.1);border:1px solid rgba(120,80,30,.3)}
+.slot-cur .rar-common,.pick-row .rar-common{color:#3a2716}
+.pick-row{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;border-radius:10px;border:1px solid #b08c55}
+.pick-main{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.cmps{display:flex;flex-wrap:wrap;gap:4px 10px}
+.cmp{font-size:13px}.cmp.good b{color:#2f6b24}.cmp.bad,.cmp.bad b{color:#9a2a1c}
+.pick-note{font-size:12px;color:#7a5a2e}
+.set-row{flex-direction:row!important;align-items:center;justify-content:space-between}
+.set-row>span{display:flex;flex-direction:column;gap:2px}
+body.big-font .page-in,body.big-font .scroll-body,body.big-font .kb-body{zoom:1.12}
+body.no-anim *{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){
+  .splash-load i,.pin-dots.shake,.glow{animation-duration:1ms}
+  .page{transition:none}
+  .fill{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="splash" class="splash" role="img" aria-label="Слабоумие и Отвага — загрузка">
+  <div class="splash-art"><img src="splash.webp" alt=""><div class="splash-load"><i></i></div></div>
+</div>
+
+<div id="pages" class="pages">
+  <!-- ===== ПЕРСОНАЖ ===== -->
+  <section id="tab-character" class="page"><div class="page-in">
+    <header id="topbar" class="topbar">
+      <button type="button" id="lock-btn" class="lock-btn" data-act="lock">
+        <img class="lock-open" src="lock-open.webp" alt=""><img class="lock-closed" src="lock-closed.webp" alt="">
+      </button>
+      <button type="button" id="menu-btn" class="menu-btn" data-act="menu" aria-label="Меню" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+      <div id="menu" class="menu hidden" role="menu"></div>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+    </header>
+
+    <div class="nameplate"><input id="char-name" maxlength="60" placeholder="Имя персонажа" aria-label="Имя персонажа" autocomplete="off"></div>
+
+    <section class="frame">
+      <div class="field">
+        <div class="field-head"><label for="race-select">Раса</label>
+          <button type="button" id="mut-btn" class="pill mut" data-act="open-mutation" data-target="race"></button></div>
+        <select id="race-select" class="pick"></select>
+        <input id="race-custom" class="text-input hidden" maxlength="40" placeholder="Название расы">
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="class-select">Класс</label>
+          <button type="button" id="crisis-btn" class="pill crisis" data-act="open-mutation" data-target="class"></button></div>
+        <select id="class-select" class="pick"></select>
+        <input id="class-custom" class="text-input hidden" maxlength="40" placeholder="Название класса">
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="bg-select">Предыстория</label></div>
+        <select id="bg-select" class="pick"></select>
+        <input id="bg-custom" class="text-input hidden" maxlength="40" placeholder="Название предыстории">
+      </div>
+      <div class="level-row">
+        <span class="label">Уровень</span>
+        <div class="stepper">
+          <button type="button" id="lvl-minus" class="step edit-only" data-act="lvl" data-v="-1" aria-label="Понизить уровень">−</button>
+          <div class="medallion" id="lvl-value">1</div>
+          <button type="button" id="lvl-plus" class="step edit-only" data-act="lvl" data-v="1" aria-label="Повысить уровень">+</button>
+        </div>
+      </div>
+      <div class="meter-head"><span class="meter-name">Опыт</span><span class="meter-val" id="xp-text"></span></div>
+      <div class="bar"><div class="fill fill-xp" id="xp-fill"></div></div>
+      <div class="xp-add">
+        <input id="xp-amount" class="text-input" type="number" inputmode="numeric" min="1" placeholder="Сколько опыта" aria-label="Сколько опыта получено">
+        <button type="button" id="xp-add" class="btn" data-act="add-xp">Добавить</button>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+    <section class="frame">
+      <div class="sec-head"><h2>Характеристики</h2>
+        <button type="button" id="stats-btn" class="btn btn-sm" data-act="stats-open">Распределить</button></div>
+      <p id="stats-method" class="sec-sub"></p>
+      <div id="stats-grid" class="stats-grid"></div>
+    </section>
+
+    <div class="divider"></div>
+    <section class="frame">
+      <div class="sec-head"><h2>Черты и особенности</h2>
+        <button type="button" class="btn btn-sm edit-only" data-act="add-trait">Своё свойство</button></div>
+      <div id="traits-list"></div>
+    </section>
+  </div></section>
+
+  <!-- ===== БОЙ ===== -->
+  <section id="tab-combat" class="page"><div class="page-in">
+    <div id="effects" class="effects hidden"></div>
+    <section id="hud" class="hud"></section>
+    <section class="frame"><h2>Атаки</h2><div id="attacks"></div></section>
+    <section class="frame"><h2>Способности</h2><div id="abilities"></div></section>
+    <section class="frame">
+      <div class="sec-head"><h2>Журнал</h2>
+        <div><button type="button" id="log-toggle" class="link-btn" data-act="toggle-log"></button>
+        <button type="button" class="link-btn" data-act="clear-log">Очистить</button></div></div>
+      <div id="log"></div>
+    </section>
+    <section class="frame"><h2>Черты</h2><div id="passives" class="chips"></div></section>
+  </div></section>
+
+  <!-- ===== ИНВЕНТАРЬ ===== -->
+  <section id="tab-inventory" class="page"><div class="page-in">
+    <section class="frame"><h2>Снаряжение</h2><div id="equip"></div></section>
+    <section class="frame">
+      <div id="load"></div>
+      <div class="coins">
+        <label class="coin"><img src="coin-gold.webp" alt="Золото"><input id="coin-gold" type="number" inputmode="numeric" min="0" aria-label="Золото"></label>
+        <label class="coin"><img src="coin-silver.webp" alt="Серебро"><input id="coin-silver" type="number" inputmode="numeric" min="0" aria-label="Серебро"></label>
+        <label class="coin"><img src="coin-bronze.webp" alt="Медь"><input id="coin-copper" type="number" inputmode="numeric" min="0" aria-label="Медь"></label>
+      </div>
+    </section>
+    <section class="frame">
+      <h2>Добавить предмет</h2>
+      <div class="add-item">
+        <div class="search-wrap">
+          <input id="item-name" class="text-input" maxlength="80" autocomplete="off" placeholder="Название — начните вводить" aria-label="Название предмета">
+          <div id="item-suggest" class="suggest hidden"></div>
+        </div>
+        <div id="item-ref" class="ref-chip hidden"></div>
+        <div class="row2">
+          <select id="item-type" class="pick" aria-label="Тип предмета"></select>
+          <select id="item-rarity" class="pick" aria-label="Редкость">
+            <option value="common">Обычный</option><option value="uncommon">Необычный</option><option value="rare">Редкий</option><option value="epic">Эпический</option>
+          </select>
+        </div>
+        <p id="rarity-note" class="small-note hidden">В режиме игры редкость задаёт мастер — новые предметы обычные.</p>
+        <div class="row2">
+          <input id="item-qty" class="text-input" type="number" inputmode="numeric" min="1" value="1" aria-label="Количество" placeholder="Кол-во">
+          <input id="item-weight" class="text-input" type="number" inputmode="decimal" min="0" step="0.1" value="0.5" aria-label="Вес, кг" placeholder="Вес, кг">
+        </div>
+        <button type="button" class="btn" data-act="add-item">Добавить</button>
+      </div>
+    </section>
+    <section class="frame">
+      <div id="inv-filters" class="filters"></div>
+      <div id="inv-list"></div>
+    </section>
+  </div></section>
+</div>
+
+<div id="toast" class="toast" data-act="toast-hide" role="status" aria-live="polite"></div>
+
+<nav id="nav" class="nav" aria-label="Вкладки">
+  <button type="button" data-tab="character"><img class="on-img" src="tab-character-on.webp" alt=""><img class="off-img" src="tab-character-off.webp" alt=""><span>Персонаж</span></button>
+  <button type="button" data-tab="combat"><img class="on-img" src="tab-combat-on.webp" alt=""><img class="off-img" src="tab-combat-off.webp" alt=""><span>Бой</span></button>
+  <button type="button" data-tab="inventory"><img class="on-img" src="tab-inventory-on.webp" alt=""><img class="off-img" src="tab-inventory-off.webp" alt=""><span>Инвентарь</span></button>
+</nav>
+
+<div id="kb" class="kb hidden" role="dialog" aria-label="Справочник">
+  <div class="kb-head">
+    <div class="kb-top"><button type="button" id="kb-back" class="kb-back" data-act="kb-back" aria-label="Закрыть справочник">←</button><h2 id="kb-title">Справочник</h2></div>
+    <input id="kb-q" class="text-input" type="search" placeholder="Поиск: термин, раса, приём, предмет" aria-label="Поиск по справочнику" autocomplete="off">
+  </div>
+  <div id="kb-body" class="kb-body"></div>
+</div>
+
+<div id="coach" class="coach hidden"><div class="coach-block" id="cb-t"></div><div class="coach-block" id="cb-b"></div><div class="coach-block" id="cb-l"></div><div class="coach-block" id="cb-r"></div><div id="coach-hole" class="coach-hole"></div><div id="coach-bubble" class="coach-bubble"></div></div>
+
+<div id="modal" class="modal hidden" aria-hidden="true">
+  <div class="modal-backdrop" data-act="modal-backdrop"></div>
+  <div id="modal-scroll" class="scroll" role="dialog" aria-modal="true"><div id="modal-roller" class="roller"></div><div id="modal-body" class="scroll-body"></div></div>
+</div>
+
+<script>
+(function(){
+  var s=document.getElementById('splash'),done=false;
+  function hide(){ if(done) return; done=true; s.classList.add('gone'); setTimeout(function(){ s.remove(); },500); }
+  setTimeout(hide,2600); s.addEventListener('click',hide);
+})();
+</script>
+<script src="data.js"></script>
+<script src="data-kb.js"></script>
+<script src="app.js"></script>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load',function(){ navigator.serviceWorker.register('service-worker.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
