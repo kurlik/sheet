@@ -1090,6 +1090,16 @@ body.map70-on .rat92{display:none}
 .m70-saved .seg-btn{flex:1 1 auto;text-align:left}
 @media (prefers-reduced-motion:reduce){.m70-pulse{animation:none}}
 .m70-info.big{font-size:15px;font-weight:700;color:#5fd0c3}
+.m70-tg{margin:6px 0 2px;font-size:12px}
+.m70pop{position:absolute;z-index:3;width:min(260px,calc(100% - 12px));padding:8px;border-radius:12px;background:rgba(16,19,27,.97);border:1px solid #a88a4c;box-shadow:0 8px 24px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:5px}
+.m70pop-h{display:flex;align-items:center;gap:8px}
+.m70pop-h b{color:var(--gold);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m70pop-h span{font-size:12px;color:#9fd4cf;white-space:nowrap;margin-left:auto}
+.m70pop-x{width:30px;height:30px;color:var(--muted);font-size:14px;flex:none}
+.m70pop-b{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:38px;padding:4px 10px;border-radius:9px;border:1px solid #4b5568;background:#151a24;color:#e8dfc6;font-size:14px;font-weight:600;text-align:left}
+.m70pop-b small{font-size:11.5px;color:var(--muted);font-weight:500;text-align:right}
+.m70pop-b:disabled{opacity:.45}
+.m70pop-n{margin:0;font-size:12.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -4054,7 +4064,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.0.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.0.1';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -13841,27 +13851,27 @@ function ratWatch92() {
    Каждый предмет — отдельная запись: рисунок в квадрате 100×100 (растягивается под размер предмета).
    Чтобы сделать красивее, достаточно заменить svg одной записи (или дать img: 'img/<файл>' — тогда рисуется картинка).
    n — название, w×h — размер по умолчанию в метрах, block — фишки не проходят, hit — доля размера,
-   которая мешает (у дерева только ствол), floor — лежит на полу (рисуется под остальным), hid — по умолчанию скрыт.
+   которая мешает (у дерева только ствол), floor — лежит на полу (рисуется под остальным), hid — по умолчанию скрыт, low — низкое (перепрыгнуть можно).
    ===================================================================== */
 const MAP_ASSETS70 = {
   wall: { n: 'Стена', w: 3, h: 0.5, block: 1, svg: '<rect width="100" height="100" fill="#59606e"/><rect width="100" height="100" fill="none" stroke="#2a2e37" stroke-width="10"/><path d="M0 50H100M20 0V50M55 0V50M85 0V50M38 50V100M70 50V100" stroke="#353a45" stroke-width="5"/>' },
   door: { n: 'Дверь', w: 1.5, h: 0.4, block: 1, door: 1, svg: '<rect width="100" height="100" rx="8" fill="#6b4626" stroke="#2f1c0c" stroke-width="10"/><path d="M33 8V92M66 8V92" stroke="#3b2510" stroke-width="7"/><circle cx="84" cy="50" r="8" fill="#e0bd6e"/>' },
-  fence: { n: 'Забор', w: 3, h: 0.3, block: 1, svg: '<rect y="35" width="100" height="30" fill="#6b4c2c"/><path d="M8 0V100M36 0V100M64 0V100M92 0V100" stroke="#4a321a" stroke-width="12"/>' },
+  fence: { n: 'Забор', w: 3, h: 0.3, block: 1, low: 1, svg: '<rect y="35" width="100" height="30" fill="#6b4c2c"/><path d="M8 0V100M36 0V100M64 0V100M92 0V100" stroke="#4a321a" stroke-width="12"/>' },
   pillar: { n: 'Колонна', w: 1, h: 1, block: 1, svg: '<circle cx="50" cy="50" r="46" fill="#6d7484" stroke="#2a2e37" stroke-width="8"/><circle cx="50" cy="50" r="28" fill="none" stroke="#8b92a1" stroke-width="6"/>' },
   statue: { n: 'Статуя', w: 1, h: 1, block: 1, svg: '<rect x="6" y="6" width="88" height="88" rx="6" fill="#4b5160" stroke="#262a33" stroke-width="7"/><circle cx="50" cy="38" r="16" fill="#9aa1b0"/><path d="M26 86Q50 40 74 86Z" fill="#9aa1b0"/>' },
-  table: { n: 'Стол', w: 1, h: 1, block: 1, svg: '<rect x="4" y="4" width="92" height="92" rx="8" fill="#8a5a2f" stroke="#3b230f" stroke-width="7"/><path d="M10 35H90M10 65H90" stroke="#6e4522" stroke-width="5"/>' },
-  table2: { n: 'Большой стол', w: 2.5, h: 1.2, block: 1, svg: '<rect x="3" y="5" width="94" height="90" rx="6" fill="#8a5a2f" stroke="#3b230f" stroke-width="6"/><path d="M6 35H94M6 65H94" stroke="#6e4522" stroke-width="4"/>' },
-  rtable: { n: 'Круглый стол', w: 1.5, h: 1.5, block: 1, svg: '<circle cx="50" cy="50" r="45" fill="#8a5a2f" stroke="#3b230f" stroke-width="7"/><circle cx="50" cy="50" r="28" fill="none" stroke="#6e4522" stroke-width="4"/>' },
+  table: { n: 'Стол', w: 1, h: 1, block: 1, low: 1, svg: '<rect x="4" y="4" width="92" height="92" rx="8" fill="#8a5a2f" stroke="#3b230f" stroke-width="7"/><path d="M10 35H90M10 65H90" stroke="#6e4522" stroke-width="5"/>' },
+  table2: { n: 'Большой стол', w: 2.5, h: 1.2, block: 1, low: 1, svg: '<rect x="3" y="5" width="94" height="90" rx="6" fill="#8a5a2f" stroke="#3b230f" stroke-width="6"/><path d="M6 35H94M6 65H94" stroke="#6e4522" stroke-width="4"/>' },
+  rtable: { n: 'Круглый стол', w: 1.5, h: 1.5, block: 1, low: 1, svg: '<circle cx="50" cy="50" r="45" fill="#8a5a2f" stroke="#3b230f" stroke-width="7"/><circle cx="50" cy="50" r="28" fill="none" stroke="#6e4522" stroke-width="4"/>' },
   chair: { n: 'Стул', w: 0.6, h: 0.6, svg: '<rect x="12" y="12" width="76" height="76" rx="10" fill="#7a4e28" stroke="#3b230f" stroke-width="9"/><rect x="12" y="6" width="76" height="20" rx="6" fill="#5a3618"/>' },
   bench: { n: 'Скамья', w: 2, h: 0.5, svg: '<rect x="2" y="10" width="96" height="80" rx="10" fill="#7a4e28" stroke="#3b230f" stroke-width="8"/>' },
-  bar: { n: 'Стойка', w: 4, h: 0.8, block: 1, svg: '<rect x="2" y="4" width="96" height="92" rx="5" fill="#5e3a1c" stroke="#2c180a" stroke-width="7"/><rect x="2" y="4" width="96" height="30" fill="#7d5027"/><circle cx="20" cy="62" r="8" fill="#e0bd6e"/><circle cx="62" cy="62" r="8" fill="#9fd4cf"/>' },
-  barrel: { n: 'Бочка', w: 0.8, h: 0.8, block: 1, svg: '<circle cx="50" cy="50" r="44" fill="#7a4a22" stroke="#2c180a" stroke-width="8"/><circle cx="50" cy="50" r="30" fill="none" stroke="#9aa1b0" stroke-width="6"/><circle cx="50" cy="50" r="10" fill="#4e2e12"/>' },
-  crate: { n: 'Ящик', w: 1, h: 1, block: 1, svg: '<rect x="5" y="5" width="90" height="90" fill="#9a6b38" stroke="#3b230f" stroke-width="8"/><path d="M10 10L90 90M90 10L10 90" stroke="#6e4522" stroke-width="8"/>' },
-  chest: { n: 'Сундук', w: 1, h: 0.6, block: 1, svg: '<rect x="4" y="8" width="92" height="84" rx="10" fill="#6b3f1b" stroke="#2c180a" stroke-width="8"/><path d="M4 45H96" stroke="#e0bd6e" stroke-width="8"/><rect x="42" y="36" width="16" height="22" fill="#e0bd6e"/>' },
-  bed: { n: 'Кровать', w: 1, h: 2, block: 1, svg: '<rect x="4" y="3" width="92" height="94" rx="6" fill="#5e3a1c" stroke="#2c180a" stroke-width="6"/><rect x="12" y="8" width="76" height="20" rx="6" fill="#d9ccb0"/><rect x="12" y="34" width="76" height="58" rx="4" fill="#3d5b78"/>' },
+  bar: { n: 'Стойка', w: 4, h: 0.8, block: 1, low: 1, svg: '<rect x="2" y="4" width="96" height="92" rx="5" fill="#5e3a1c" stroke="#2c180a" stroke-width="7"/><rect x="2" y="4" width="96" height="30" fill="#7d5027"/><circle cx="20" cy="62" r="8" fill="#e0bd6e"/><circle cx="62" cy="62" r="8" fill="#9fd4cf"/>' },
+  barrel: { n: 'Бочка', w: 0.8, h: 0.8, block: 1, low: 1, svg: '<circle cx="50" cy="50" r="44" fill="#7a4a22" stroke="#2c180a" stroke-width="8"/><circle cx="50" cy="50" r="30" fill="none" stroke="#9aa1b0" stroke-width="6"/><circle cx="50" cy="50" r="10" fill="#4e2e12"/>' },
+  crate: { n: 'Ящик', w: 1, h: 1, block: 1, low: 1, svg: '<rect x="5" y="5" width="90" height="90" fill="#9a6b38" stroke="#3b230f" stroke-width="8"/><path d="M10 10L90 90M90 10L10 90" stroke="#6e4522" stroke-width="8"/>' },
+  chest: { n: 'Сундук', w: 1, h: 0.6, block: 1, low: 1, svg: '<rect x="4" y="8" width="92" height="84" rx="10" fill="#6b3f1b" stroke="#2c180a" stroke-width="8"/><path d="M4 45H96" stroke="#e0bd6e" stroke-width="8"/><rect x="42" y="36" width="16" height="22" fill="#e0bd6e"/>' },
+  bed: { n: 'Кровать', w: 1, h: 2, block: 1, low: 1, svg: '<rect x="4" y="3" width="92" height="94" rx="6" fill="#5e3a1c" stroke="#2c180a" stroke-width="6"/><rect x="12" y="8" width="76" height="20" rx="6" fill="#d9ccb0"/><rect x="12" y="34" width="76" height="58" rx="4" fill="#3d5b78"/>' },
   tree: { n: 'Дерево', w: 3, h: 3, block: 1, hit: 0.34, svg: '<circle cx="50" cy="50" r="47" fill="#1f4a2a"/><circle cx="36" cy="40" r="26" fill="#2c6a3a"/><circle cx="64" cy="58" r="24" fill="#275f34"/><circle cx="50" cy="50" r="12" fill="#4e3218" stroke="#2c180a" stroke-width="4"/>' },
   bush: { n: 'Кусты', w: 1.5, h: 1.5, svg: '<circle cx="35" cy="40" r="28" fill="#2f5e2c"/><circle cx="64" cy="44" r="26" fill="#386b33"/><circle cx="50" cy="66" r="28" fill="#2a5527"/>' },
-  rock: { n: 'Камень', w: 1, h: 1, block: 1, svg: '<path d="M12 70L22 22L60 8L90 36L84 82L40 92Z" fill="#6c7280" stroke="#2f333c" stroke-width="7"/><path d="M30 34L58 22L74 40" fill="none" stroke="#8d93a0" stroke-width="6"/>' },
+  rock: { n: 'Камень', w: 1, h: 1, block: 1, low: 1, svg: '<path d="M12 70L22 22L60 8L90 36L84 82L40 92Z" fill="#6c7280" stroke="#2f333c" stroke-width="7"/><path d="M30 34L58 22L74 40" fill="none" stroke="#8d93a0" stroke-width="6"/>' },
   boulder: { n: 'Валун', w: 2.5, h: 2.5, block: 1, hit: 0.8, svg: '<path d="M6 60L16 18L54 4L92 26L96 70L60 96L18 90Z" fill="#5d6270" stroke="#2a2e37" stroke-width="6"/><path d="M24 30L52 16L80 32M30 66L58 78" fill="none" stroke="#7d8391" stroke-width="5"/>' },
   water: { n: 'Вода', w: 3, h: 3, floor: 1, svg: '<rect width="100" height="100" rx="22" fill="#1e4f6b"/><path d="M15 35Q30 25 45 35T75 35M25 60Q40 50 55 60T85 60" fill="none" stroke="#5fb3c9" stroke-width="5" stroke-linecap="round"/>' },
   road: { n: 'Дорога', w: 3, h: 3, floor: 1, svg: '<rect width="100" height="100" fill="#6b5a3c"/><circle cx="25" cy="30" r="5" fill="#57492f"/><circle cx="70" cy="65" r="6" fill="#57492f"/><circle cx="55" cy="22" r="3" fill="#7d6a48"/>' },
@@ -13876,20 +13886,42 @@ const MAP_ASSETS70 = {
 /* порядок в палитре мастера */
 const MAP_PAL70 = ['wall', 'door', 'table', 'table2', 'rtable', 'chair', 'bench', 'bar', 'barrel', 'crate', 'chest', 'bed', 'pillar', 'statue', 'fence',
   'tree', 'bush', 'rock', 'boulder', 'water', 'road', 'fire', 'rug', 'stairs', 'web', 'bones', 'debris', 'trap'];
-/* готовые карты: [вид, x центра, y центра, ширина, высота, поворот] */
+/* готовые карты: g — раздел в меню, items: [вид, x центра, y центра, ширина, высота, поворот] */
+const MAP_TPL_G70 = [['tavern', 'Таверны'], ['dungeon', 'Подземелья'], ['forest', 'Леса'], ['cave', 'Пещеры']];
 const MAP_TPL70 = {
-  tavern: { n: 'Таверна', w: 24, h: 18, bg: 'wood', items: [
+  tavern: { g: 'tavern', n: 'Таверна «Ржавый котёл»', w: 24, h: 18, bg: 'wood', items: [
     ['wall', 12, 0.25, 24, 0.5], ['wall', 0.25, 9, 0.5, 17], ['wall', 23.75, 9, 0.5, 17], ['wall', 5.625, 17.75, 11.25, 0.5], ['wall', 18.375, 17.75, 11.25, 0.5], ['door', 12, 17.75, 1.5, 0.4],
     ['bar', 6, 3.5, 8, 0.8], ['barrel', 2.5, 1.5, 0.8, 0.8], ['barrel', 3.6, 1.5, 0.8, 0.8], ['crate', 8.5, 1.4, 1, 1], ['rug', 12, 10, 3, 4],
     ['rtable', 6, 8.5, 1.5, 1.5], ['chair', 4.8, 8.5, 0.6, 0.6], ['chair', 7.2, 8.5, 0.6, 0.6], ['rtable', 6, 13.5, 1.5, 1.5], ['chair', 6, 12.3, 0.6, 0.6],
     ['table2', 17.5, 4, 4, 1.2], ['bench', 17.5, 2.8, 4, 0.5], ['bench', 17.5, 5.2, 4, 0.5], ['rtable', 17, 10, 1.5, 1.5], ['chair', 15.8, 10, 0.6, 0.6], ['chair', 18.2, 10, 0.6, 0.6],
     ['table', 17, 14.5, 1, 1], ['chair', 17, 15.5, 0.6, 0.6], ['fire', 22, 15.5, 1.2, 1.2], ['stairs', 22.5, 6, 1.5, 3], ['pillar', 12, 6, 0.8, 0.8], ['pillar', 12, 14, 0.8, 0.8]] },
-  forest: { n: 'Лесная дорога', w: 30, h: 21, bg: 'grass', items: [
+  inn: { g: 'tavern', n: 'Придорожный трактир', w: 15, h: 15, bg: 'wood', items: [
+    ['wall', 7.5, 0.25, 15, 0.5], ['wall', 0.25, 7.5, 0.5, 14], ['wall', 14.75, 7.5, 0.5, 14], ['wall', 3.375, 14.75, 6.75, 0.5], ['wall', 11.625, 14.75, 6.75, 0.5], ['door', 7.5, 14.75, 1.5, 0.4],
+    ['wall', 11, 5, 0.5, 9], ['door', 11, 10.25, 1.5, 0.4, 90], ['bed', 13.2, 2.5, 1, 2], ['chest', 13.2, 5, 1, 0.6],
+    ['bar', 4, 2.5, 6, 0.8], ['barrel', 1.4, 1.2, 0.8, 0.8], ['barrel', 2.5, 1.2, 0.8, 0.8],
+    ['table', 8, 5, 1, 1], ['chair', 8, 4.1, 0.6, 0.6], ['chair', 8, 5.9, 0.6, 0.6], ['rtable', 4, 8, 1.5, 1.5], ['chair', 2.9, 8, 0.6, 0.6], ['chair', 5.1, 8, 0.6, 0.6],
+    ['rtable', 8, 11, 1.5, 1.5], ['chair', 8, 9.9, 0.6, 0.6], ['fire', 13.2, 13, 1, 1], ['rug', 4, 12, 2, 3]] },
+  crypt: { g: 'dungeon', n: 'Склеп', w: 24, h: 18, bg: 'stone', items: [
+    ['wall', 12, 0.25, 24, 0.5], ['wall', 12, 17.75, 24, 0.5], ['wall', 0.25, 9, 0.5, 17], ['wall', 23.75, 9, 0.5, 17],
+    ['wall', 8, 6, 0.5, 11], ['door', 8, 12.25, 1.5, 0.4, 90], ['wall', 8, 15.25, 0.5, 4.5],
+    ['stairs', 3, 9, 1.5, 3], ['bones', 4, 4, 1, 1], ['bones', 3, 14, 1, 1], ['web', 1.8, 1.8, 1.5, 1.5], ['crate', 6.5, 16.3, 1, 1],
+    ['pillar', 12, 4, 1, 1], ['pillar', 20, 4, 1, 1], ['pillar', 12, 13, 1, 1], ['pillar', 20, 13, 1, 1], ['statue', 16, 2, 1, 1],
+    ['chest', 16, 8.5, 2, 1], ['chest', 16, 11, 2, 1], ['trap', 16, 14.5, 1, 1], ['web', 22.5, 16.5, 1.5, 1.5], ['bones', 21, 9, 1, 1]] },
+  hall: { g: 'dungeon', n: 'Зал с колоннами', w: 30, h: 21, bg: 'stone', items: [
+    ['wall', 15, 0.25, 30, 0.5], ['wall', 15, 20.75, 30, 0.5], ['wall', 0.25, 4.875, 0.5, 9.75], ['wall', 0.25, 16.125, 0.5, 9.75], ['door', 0.25, 10.5, 1.5, 0.4, 90],
+    ['wall', 29.75, 4.875, 0.5, 9.75], ['wall', 29.75, 16.125, 0.5, 9.75], ['door', 29.75, 10.5, 1.5, 0.4, 90],
+    ['pillar', 6, 6, 1, 1], ['pillar', 10.5, 6, 1, 1], ['pillar', 19.5, 6, 1, 1], ['pillar', 24, 6, 1, 1], ['pillar', 6, 15, 1, 1], ['pillar', 10.5, 15, 1, 1], ['pillar', 19.5, 15, 1, 1], ['pillar', 24, 15, 1, 1],
+    ['rug', 15, 10.5, 3, 8], ['statue', 15, 2.5, 1.5, 1.5], ['stairs', 15, 19, 1.5, 3, 90], ['chest', 27.5, 2.5, 1, 0.6], ['trap', 15, 15.5, 1, 1], ['bones', 4, 18, 1, 1], ['debris', 25, 18, 1.5, 1.5]] },
+  forest: { g: 'forest', n: 'Лесная дорога', w: 30, h: 21, bg: 'grass', items: [
     ['road', 4.5, 10.5, 9, 3], ['road', 13.5, 10.5, 9, 3], ['road', 22.5, 10.5, 9, 3], ['road', 28.5, 10.5, 3, 3],
     ['tree', 3, 3, 3, 3], ['tree', 9, 4.5, 3, 3], ['tree', 16.5, 3, 3, 3], ['tree', 25.5, 4.5, 3, 3], ['tree', 4.5, 17.5, 3, 3], ['tree', 12, 18, 3, 3], ['tree', 21, 16.5, 3, 3], ['tree', 27.5, 18, 3, 3],
     ['bush', 13, 6.5, 1.5, 1.5], ['bush', 20, 7, 1.5, 1.5], ['bush', 8, 14.5, 1.5, 1.5], ['bush', 24.5, 14, 1.5, 1.5],
     ['boulder', 17.5, 15, 2.5, 2.5], ['rock', 6.5, 7.5, 1, 1], ['rock', 23, 7.8, 1, 1], ['water', 28, 3, 3, 3], ['water', 28, 6, 3, 3], ['fence', 10.5, 8.4, 3, 0.3], ['crate', 15, 12.6, 1, 1], ['barrel', 16.3, 12.6, 0.8, 0.8]] },
-  cave: { n: 'Пещера', w: 24, h: 18, bg: 'cave', items: [
+  glade: { g: 'forest', n: 'Поляна у ручья', w: 24, h: 18, bg: 'grass', items: [
+    ['water', 1.5, 9, 3, 3], ['water', 4.5, 9.8, 3, 3], ['water', 7.5, 10.4, 3, 3], ['water', 10.5, 10.4, 3, 3], ['water', 13.5, 9.8, 3, 3], ['water', 16.5, 9.2, 3, 3], ['water', 19.5, 9.8, 3, 3], ['water', 22.5, 10.4, 3, 3],
+    ['road', 10.5, 10.4, 3, 2], ['tree', 3, 3, 3, 3], ['tree', 8, 2.5, 3, 3], ['tree', 20.5, 3, 3, 3], ['tree', 21.5, 15, 3, 3], ['tree', 3.5, 15.5, 3, 3], ['tree', 16, 16, 3, 3],
+    ['bush', 12, 3, 1.5, 1.5], ['bush', 7, 14, 1.5, 1.5], ['bush', 18.5, 6.5, 1.5, 1.5], ['fire', 14, 4.5, 1, 1], ['rock', 13, 6, 1, 1], ['crate', 15.5, 3.5, 1, 1], ['barrel', 15.6, 5.4, 0.8, 0.8], ['boulder', 10, 15, 2.5, 2.5]] },
+  cave: { g: 'cave', n: 'Пещера', w: 24, h: 18, bg: 'cave', items: [
     ['boulder', 2, 2, 3, 3], ['boulder', 7, 1.5, 3, 2.5], ['boulder', 15, 1.5, 4, 2.5], ['boulder', 21.5, 2.5, 3, 4], ['boulder', 1.8, 9, 2.5, 4], ['boulder', 22, 10, 3, 4],
     ['boulder', 3, 16, 4, 3], ['boulder', 11, 16.8, 4, 2.2], ['boulder', 19.5, 16, 5, 3], ['rock', 10, 7, 1.2, 1.2], ['rock', 14.5, 11, 1, 1], ['rock', 6.5, 12, 1, 1],
     ['water', 16.5, 7, 3, 2.5], ['bones', 8, 10, 1, 1], ['bones', 18, 13, 1, 1], ['web', 20.5, 6, 1.5, 1.5], ['web', 4.5, 5, 1.5, 1.5], ['chest', 12, 4.5, 1, 0.6], ['fire', 11.5, 12.5, 1, 1], ['trap', 12, 6.5, 1, 1]] }
@@ -14034,7 +14066,7 @@ function pen70(V, D, c) {
   const R = D.R; let p = 0;
   p += Math.max(0, R - c.x) + Math.max(0, R - c.y) + Math.max(0, c.x + R - V.w) + Math.max(0, c.y + R - V.h);
   V.items.forEach(i => {
-    const A = MAP_ASSETS70[i.k]; if (!A || !A.block || (A.door && i.o)) return;
+    const A = MAP_ASSETS70[i.k]; if (!A || !A.block || (A.door && i.o) || (D.tall && A.low)) return;
     const b = itemBox70(i), nx = clamp70(c.x, i.x - b.hw, i.x + b.hw), ny = clamp70(c.y, i.y - b.hh, i.y + b.hh), d = Math.hypot(c.x - nx, c.y - ny);
     if (d < R) p += R - d;
   });
@@ -14050,7 +14082,7 @@ function pathLen70(pts) { let l = 0; for (let i = 1; i < pts.length; i++) l += M
 function step70(V, D, target) {
   if (D.path.length > 3) for (let i = 0; i < D.path.length - 3; i++) {
     const q = D.path[i];
-    if (Math.hypot(q[0] - target.x, q[1] - target.y) < 0.3) { D.path.length = i + 1; D.P = { x: q[0], y: q[1] }; D.len = pathLen70(D.path); break; }
+    if (Math.hypot(q[0] - target.x, q[1] - target.y) < 0.3) { D.path.length = i + 1; D.P = { x: q[0], y: q[1] }; D.len = pathLen70(D.path) * (D.k || 1); break; }
   }
   D.over = false; D.stuck = false;
   const ok = c => !D.collide || pen70(V, D, c) < 1e-6 || pen70(V, D, c) < pen70(V, D, D.P) - 1e-6;
@@ -14058,7 +14090,8 @@ function step70(V, D, target) {
     const dx = target.x - D.P.x, dy = target.y - D.P.y, dist = Math.hypot(dx, dy);
     if (dist < 0.02) break;
     let seg = Math.min(0.15, dist);
-    if (D.len + seg > D.budget) { seg = D.budget - D.len; if (seg < 0.01) { D.over = true; break; } }
+    const k = D.k || 1;   // ползком каждый метр стоит два
+    if (D.len + seg * k > D.budget) { seg = (D.budget - D.len) / k; if (seg < 0.01) { D.over = true; break; } }
     let c = { x: D.P.x + dx / dist * seg, y: D.P.y + dy / dist * seg };
     if (!ok(c)) {
       const opts = [{ x: c.x, y: D.P.y }, { x: D.P.x, y: c.y }].filter(o => Math.hypot(o.x - D.P.x, o.y - D.P.y) > 0.005 && ok(o))
@@ -14066,7 +14099,7 @@ function step70(V, D, target) {
       if (!opts.length) { D.stuck = true; break; }
       c = opts[0];
     }
-    D.len += Math.hypot(c.x - D.P.x, c.y - D.P.y); D.P = c;
+    D.len += Math.hypot(c.x - D.P.x, c.y - D.P.y) * k; D.P = c;
     const last = D.path[D.path.length - 1];
     if (Math.hypot(last[0] - c.x, last[1] - c.y) >= 0.25) D.path.push([r2_70(c.x), r2_70(c.y)]);
   }
@@ -14213,7 +14246,7 @@ function svg70(V) {
 function el70() {
   let o = $('map70'); if (o) return o;
   o = document.createElement('div'); o.id = 'map70'; o.className = 'map70 hidden';
-  o.innerHTML = '<div class="m70-top" id="m70-top"></div><div class="m70-stage" id="m70-stage"><svg id="m70-svg" xmlns="http://www.w3.org/2000/svg"></svg><div class="m70-empty hidden" id="m70-empty"></div></div><div class="m70-bar" id="m70-bar"></div>';
+  o.innerHTML = '<div class="m70-top" id="m70-top"></div><div class="m70-stage" id="m70-stage"><svg id="m70-svg" xmlns="http://www.w3.org/2000/svg"></svg><div class="m70-empty hidden" id="m70-empty"></div><div class="m70pop hidden" id="m70-pop"></div></div><div class="m70-bar" id="m70-bar"></div>';
   document.body.appendChild(o);
   const st = o.querySelector('#m70-stage');
   st.addEventListener('pointerdown', down70); st.addEventListener('pointermove', move70);
@@ -14223,7 +14256,7 @@ function el70() {
 }
 function openMap70() {
   el70().classList.remove('hidden'); document.body.classList.add('map70-on');
-  M70.open = true; M70.view = null; M70.ruler = null; M70.sel = null; M70.selItem = null; M70.arm = null; M70.armTok = null; M70.placeMe = false;
+  M70.open = true; M70.view = null; M70.ruler = null; M70.pop = null; M70.sel = null; M70.selItem = null; M70.arm = null; M70.armTok = null; M70.placeMe = false;
   if (appRole() === 'gm') { gmMap70(); publishMap70(); }
   else { const mv = mv70(); if (mv.pos) state.mpos = mv.pos; }
   paint70();
@@ -14264,6 +14297,7 @@ function paint70() {
   svg.innerHTML = svg70(V);
   setHtml70($('m70-top'), V.gmv ? gmTop70(V) : plTop70(V));
   setHtml70($('m70-bar'), V.gmv ? gmBar70(V) : plBar70(V));
+  placePop70();
 }
 function info70(V) {
   const T = turn70(V), D = M70.drag;
@@ -14282,7 +14316,7 @@ function plBar70(V) {
   const me = V.toks.find(t => t.me);
   if (!me) return `<p class="m70-hint">${M70.placeMe ? 'Коснитесь карты там, где стоит ваш герой.' : 'Вашей фишки на карте пока нет.'}</p>${M70.placeMe ? '' : '<button type="button" class="m70b wide" data-m="place-me">Встать на карту</button>'}`;
   const ws = weapons70();
-  return `<p class="m70-hint">Тяните свою фишку пальцем. Касание карты или фишки — расстояние. Оружие ниже — дальность.</p>
+  return `<p class="m70-hint">Тяните свою фишку пальцем или коснитесь места: идти, ползком, прыжок. Касание врага — чем бить. Оружие ниже — дальность.</p>
     ${ws.length ? `<div class="m70-scroll">${ws.map(w => `<button type="button" class="m70chip ${M70.ring === w.key ? 'on' : ''}" data-m="ring" data-v="${esc(w.key)}">${esc(w.n)}<small>${w.melee ? meters(w.reach) : w.rng.map(num1).join('/') + ' м'}</small></button>`).join('')}</div>` : ''}`;
 }
 function gmTop70(V) {
@@ -14347,7 +14381,7 @@ function hitItem70(V, p) {
   return null;
 }
 function down70(e) {
-  const V = M70.V; if (!V || !M70.view) return;
+  const V = M70.V; if (!V || !M70.view || (e.target.closest && e.target.closest('#m70-pop'))) return;
   e.preventDefault();
   try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) { /* старые браузеры */ }
   M70.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -14393,6 +14427,7 @@ function move70(e) {
   const g = M70.g; if (!g) return;
   if (!g.moved && Math.hypot(e.clientX - g.sx, e.clientY - g.sy) < 7) return;
   g.moved = true;
+  if (M70.pop) { M70.pop = null; placePop70(); }
   const D = M70.drag, p = toMap70(e);
   if (D && D.kind === 'tok') {
     D.moved = true; D.target = { x: p.x - D.off.x, y: p.y - D.off.y };
@@ -14426,11 +14461,22 @@ function wheel70(e) {
   const r = $('m70-stage').getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, px = v.x + mx / v.s, py = v.y + my / v.s;
   v.s = clamp70(v.s * Math.pow(1.0015, -e.deltaY), 4, 140); v.x = px - mx / v.s; v.y = py - my / v.s; applyView70();
 }
+function onTok70(V, D, c) { return V.toks.some(t => t.key !== D.key && t.placed && !t.down && Math.hypot(c.x - t.x, c.y - t.y) < D.R + tokR70(t.s) - 0.1); }
+/* закончить ход на чужой фишке нельзя: откатываемся по маршруту до свободного места (в проём проходят по одному) */
+function unstack70(V, D) {
+  if (!onTok70(V, D, D.P)) return;
+  for (let i = D.path.length - 1; i >= 0; i--) {
+    const q = { x: D.path[i][0], y: D.path[i][1] };
+    if (!onTok70(V, D, q)) { D.path.length = i + 1; D.P = q; D.len = pathLen70(D.path) * (D.k || 1); toast('Место занято — остановились рядом.', 'info'); return; }
+  }
+  D.P = D.start; D.path = [[D.start.x, D.start.y]]; D.len = 0;
+}
 function commitTok70(V, D) {
+  if (!V.gmv && D.collide) unstack70(V, D);
   let P = D.P;
   if (V.snap) {
-    const q = snapPt70(P, D.s), extra = Math.hypot(q.x - P.x, q.y - P.y);
-    if ((!D.collide || pen70(V, D, q) < 1e-6) && D.len + extra <= D.budget + 1e-6) { D.len += extra; P = q; D.path.push([q.x, q.y]); }
+    const q = snapPt70(P, D.s), extra = Math.hypot(q.x - P.x, q.y - P.y) * (D.k || 1);
+    if ((!D.collide || (pen70(V, D, q) < 1e-6 && !onTok70(V, D, q))) && D.len + extra <= D.budget + 1e-6) { D.len += extra; P = q; D.path.push([q.x, q.y]); }
   }
   P = { x: r2_70(P.x), y: r2_70(P.y) };
   if (Math.hypot(P.x - D.start.x, P.y - D.start.y) < 0.02) { paint70(); return; }
@@ -14485,9 +14531,79 @@ function tap70(V, p) {
     M70.placeMe = false; pushPos70(null); paint70(); return;
   }
   const t = hitTok70(V, p);
-  if (t && t.me) { M70.ruler = null; paint70(); return; }
+  if (t && t.me) { M70.ruler = null; M70.pop = null; paint70(); return; }
   M70.ruler = t ? { a: { x: me.x, y: me.y }, b: { x: t.x, y: t.y }, d: dist70(me, t) } : { a: { x: me.x, y: me.y }, b: p, d: Math.hypot(p.x - me.x, p.y - me.y) };
+  M70.pop = { p: t ? { x: t.x, y: t.y } : p, key: t ? t.key : null };
   paint70();
+}
+/* меню по касанию: место — как идти; враг — чем бить; союзник — подойти */
+function popHtml70(V) {
+  const P = M70.pop, me = V.toks.find(t => t.me); if (!P || !me) return '';
+  const t = P.key && V.toks.find(x => x.key === P.key); if (P.key && !t) return '';
+  const T = turn70(V), left = T.limit ? Math.max(0, T.budget - T.used) : null;
+  const d = t ? dist70(me, t) : Math.hypot(P.p.x - me.x, P.p.y - me.y), far = d > 2.25 + 0.01;
+  const btn = (m, v, n, sub, off) => `<button type="button" class="m70pop-b" data-m="${m}" data-v="${esc(v)}"${off ? ' disabled' : ''}>${n}${sub ? `<small>${sub}</small>` : ''}</button>`;
+  let h = `<div class="m70pop-h"><b>${t ? esc(t.n) : 'Сюда'}</b><span>${meters(d)}${left != null ? ` · ход ${num1(left)} м` : ''}</span><button type="button" class="m70pop-x" data-m="pop-x" aria-label="Закрыть">✕</button></div>`;
+  const moves = !T.can ? `<p class="m70pop-n">${esc(T.why)}</p>` : '';
+  if (t && t.side !== 'a') {
+    h += weapons70().map(w => { const r = reach70(w, d); return btn('pop-atk', w.key, esc(w.n), r.ok ? (r.tag || 'достаёт') : r.tag, !r.ok); }).join('');
+    h += btn('pop-skill', '', 'Заклинание или умение', 'на вкладке «Бой»');
+    if (far && T.can) h += btn('pop-go', 'near', 'Подойти вплотную', '');
+    return h + moves;
+  }
+  if (t) {
+    if (far && T.can) h += btn('pop-go', 'near', 'Подойти', '');
+    h += btn('pop-go', 'throw', 'Бросить союзника', 'скоро', true);
+    return h + moves;
+  }
+  if (!T.can) return h + moves;
+  const jl = derive().scores.STR * 0.3;
+  const out = left != null && left < 0.05;
+  h += btn('pop-go', 'walk', 'Идти', out ? 'скорость потрачена' : '', out) + btn('pop-go', 'crawl', 'Ползком', 'метр за два', out) + btn('pop-go', 'jump', 'Прыжок', `с разбега до ${meters(jl)}, через низкое`, out || d > jl + 0.01);
+  if (T.limit && !T.mv.dash) h += btn('dash', '', 'Рывок', 'действие: скорость ×2');
+  return h;
+}
+function placePop70() {
+  const el = $('m70-pop'), v = M70.view, P = M70.pop;
+  if (!el) return;
+  const h = M70.V && P ? popHtml70(M70.V) : '';
+  if (!h) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.innerHTML = h; el.classList.remove('hidden');
+  const st = $('m70-stage'), W = st.clientWidth, H = st.clientHeight, w = el.offsetWidth, hh = el.offsetHeight;
+  const x = (P.p.x - v.x) * v.s, y = (P.p.y - v.y) * v.s;
+  el.style.left = clamp70(x - w / 2, 6, Math.max(6, W - w - 6)) + 'px';
+  el.style.top = (y - hh - 24 > 6 ? y - hh - 24 : clamp70(y + 24, 6, Math.max(6, H - hh - 6))) + 'px';
+}
+function goTo70(mode) {
+  const V = M70.V, P = M70.pop, me = V && V.toks.find(t => t.me); if (!me || !P) return;
+  const T = turn70(V); if (!T.can) { toast(T.why, 'info'); return; }
+  let tg = P.p;
+  if (mode === 'near') {
+    const t = V.toks.find(x => x.key === P.key); if (!t) return;
+    const dd = Math.hypot(t.x - me.x, t.y - me.y) || 1, need = tokR70(me.s) + tokR70(t.s) + 0.05;
+    tg = { x: t.x - (t.x - me.x) / dd * need, y: t.y - (t.y - me.y) / dd * need };
+  }
+  const budget = T.limit ? T.budget - T.used : 1e9;
+  const D = { kind: 'tok', key: me.key, side: 'a', s: me.s, R: tokR70(me.s) - 0.1, P: { x: me.x, y: me.y }, start: { x: me.x, y: me.y }, path: [[me.x, me.y]], len: 0,
+    collide: true, budget, moved: true, k: mode === 'crawl' ? 2 : 1, target: tg };
+  if (mode === 'jump') {
+    const len = Math.hypot(tg.x - me.x, tg.y - me.y), jl = derive().scores.STR * 0.3;
+    if (len > jl + 0.01) { toast(`Так далеко не прыгнуть: с разбега до ${meters(jl)} (Сила × 0,3).`, 'info'); return; }
+    if (len > budget + 0.01) { toast('На прыжок не хватает скорости этого хода.', 'info'); return; }
+    const J = Object.assign({}, D, { tall: true });
+    for (let i = 1; i < 20; i++) {
+      const c = { x: me.x + (tg.x - me.x) * i / 20, y: me.y + (tg.y - me.y) * i / 20 };
+      if (pen70(V, J, c) > 1e-6) { toast('Перепрыгнуть можно только низкое: стол, бочку, ящик, забор. Стена, дерево или враг мешают.', 'info'); return; }
+    }
+    if (pen70(V, D, tg) > 1e-6 || onTok70(V, D, tg)) { toast('Туда не приземлиться: место занято.', 'info'); return; }
+    D.P = tg; D.path.push([tg.x, tg.y]); D.len = len;
+  } else {
+    step70(V, D, tg);
+    if (D.over) toast('Скорости хватило не до конца.', 'info');
+    else if (D.stuck) toast('Дальше прямо не пройти: мешает преграда. Обведите её пальцем.', 'info');
+  }
+  M70.pop = null; M70.ruler = null;
+  commitTok70(V, D);
 }
 
 /* ---------- кнопки ---------- */
@@ -14514,7 +14630,8 @@ function gmMenuHtml70() {
     ${sw('grid', m.grid, 'Сетка 1,5 м')}${sw('snap', m.snap, 'Прилипание к клеткам')}
     <p class="sheet-sec">Размер поля</p><div class="pick">${MAP_SIZES70.map(([w, h]) => `<button type="button" class="seg-btn ${m.w === w && m.h === h ? 'on' : ''}" data-m="size" data-v="${w}x${h}">${w}×${h} м</button>`).join('')}</div>
     <p class="sheet-sec">Пол</p><div class="pick">${Object.entries(MAP_BG70).map(([k, b]) => `<button type="button" class="seg-btn ${m.bg === k ? 'on' : ''}" data-m="bg" data-v="${k}">${b[0]}</button>`).join('')}</div>
-    <p class="sheet-sec">Готовые карты</p><div class="pick">${Object.entries(MAP_TPL70).map(([k, t]) => `<button type="button" class="seg-btn" data-m="tpl" data-v="${k}">${esc(t.n)}</button>`).join('')}<button type="button" class="seg-btn" data-m="clear">Пустая</button></div>
+    <p class="sheet-sec">Готовые карты</p>${MAP_TPL_G70.map(([g, gn]) => `<p class="muted m70-tg">${gn}</p><div class="pick">${Object.entries(MAP_TPL70).filter(([, t]) => t.g === g).map(([k, t]) => `<button type="button" class="seg-btn" data-m="tpl" data-v="${k}">${esc(t.n)}</button>`).join('')}</div>`).join('')}
+    <div class="pick"><button type="button" class="seg-btn" data-m="clear">Пустое поле</button></div>
     <p class="sheet-sec">Мои карты</p>
     ${gm.maps70.length ? gm.maps70.map(s => `<div class="m70-saved"><button type="button" class="seg-btn" data-m="load" data-v="${esc(s.id)}">${esc(s.name)}<small> · ${s.w}×${s.h} м, ${s.items.length} предм.</small></button><button type="button" class="link-btn" data-m="delmap" data-v="${esc(s.id)}">Удалить</button></div>`).join('') : '<p class="muted">Пока нет. Расставьте поле и сохраните — к партии не придётся собирать заново.</p>'}
     <label>Название<input class="paper-input" id="m70-name" maxlength="40" placeholder="Например, Склеп под таверной"></label>
@@ -14535,6 +14652,10 @@ function act70(cmd, b) {
     case 'arm': M70.arm = M70.arm === v ? null : v; M70.selItem = null; break;
     case 'desel': M70.sel = null; M70.selItem = null; M70.ruler = null; break;
     case 'place-me': M70.placeMe = true; break;
+    case 'pop-x': M70.pop = null; M70.ruler = null; break;
+    case 'pop-go': goTo70(v); return;
+    case 'pop-atk': { const id = M70.pop && M70.pop.key; M70.pop = null; openAttack6(v); if (act6 && id) { act6.sel = [id]; refreshModal(); } break; }
+    case 'pop-skill': { M70.pop = null; closeMap70(); const n = document.querySelector('#nav [data-tab=combat]'); if (n) n.click(); return; }
     case 'ring': M70.ring = M70.ring === v ? null : v; break;
     case 'dash': {
       if (!T || !T.limit || T.mv.dash) return;
