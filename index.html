@@ -21516,8 +21516,8 @@ tap70 = function (V, p) {
 };
 function nudge79(dir) {
   const m = gmMap70(), V = M70.V, it = m.items.find(x => x.id === M70.selItem); if (!it || !V) return;
-  const was = { x: it.x, y: it.y, r: it.r, w: it.w }, hor = !((it.r || 0) % 180);
-  if (hor) it.x = r2_70(it.x + dir * CELL70); else it.y = r2_70(it.y + dir * CELL70);
+  const was = { x: it.x, y: it.y, r: it.r, w: it.w }, a = (it.r || 0) * Math.PI / 180;   // вдоль двери: косая стена овала и контура тоже
+  it.x = r2_70(it.x + dir * CELL70 * Math.cos(a)); it.y = r2_70(it.y + dir * CELL70 * Math.sin(a));
   if (!((V.rm79 || []).length && stick79(V, it)) || (it.x === was.x && it.y === was.y)) { Object.assign(it, was); toast('Дальше стены нет.', 'info'); return; }
   gmSave();
 }
