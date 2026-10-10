@@ -1,5 +1,5 @@
 /* Critical Roll: офлайн и обновления. Меняйте VERSION при каждой выкладке index.html. */
-const VERSION = 'sheet-7.11.0';
+const VERSION = 'sheet-7.11.1';
 const APPV = VERSION.slice(6);   // та же версия, что APP_VERSION в index.html
 const CORE = ['./index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 const PAGE_HDR = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
