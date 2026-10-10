@@ -4224,7 +4224,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.12.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.12.1';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -21793,7 +21793,7 @@ function center711(i) {
   });
   // широкая вода — неровный берег: радиус «гуляет» вдоль линии, одиночное пятно — не круг, а клякса
   if (R >= 2 && C.length === 1 && blob711(i.k)) {
-    const [x, y] = C[0], h = hash711(i.id), n = 7, B = [];
+    const [x, y] = C[0], h = hash711(i.id), n = 7, B = [[x, y, R * 0.7]];   // середина кляксы всегда внутри
     for (let q = 0; q <= n; q++) { const a = (q % n) / n * Math.PI * 2 + (h % 628) / 100, d = R * (0.35 + 0.2 * Math.sin(q * 2.3 + h % 7)); B.push([x + Math.cos(a) * d, y + Math.sin(a) * d, R * (0.62 + 0.12 * Math.cos(q * 1.7 + h % 5))]); }
     M711.cl.set(i, { pts: i.pts, wd: i.wd, tp: i.tp, C: B });
     return B;
@@ -22615,6 +22615,60 @@ const _act111 = act70;
 act70 = function (cmd, b) {
   if (cmd === 'g111') { S111.g = b && b.dataset ? b.dataset.v : ''; paint70(); return; }
   return _act111(cmd, b);
+};
+/* =====================================================================
+   ВЫПУСК 7.12.1: ВОДА, ЛАВА, СНЕГ, ЛЁД И ЛЕС — ТАЙЛАМИ АНДРЕЯ
+   Живые линии и пятна 7.11 были залиты цветом. Теперь поверх тех же слоёв лежат бесшовные тайлы из
+   «Ассетов 3» (каталог покрытий): у берега мелководье, дальше спокойная вода, на глубине тёмная;
+   лава — корка с трещинами, снег с проталинами по краю, лёд, лесная подстилка, в болоте тёмные окна воды.
+   Цвета остаются подложкой (пока картинка грузится и для «Простой воды» вода как раньше).
+   Тайл ищется по id покрытия; если его нет — слой просто без тайла.
+   ===================================================================== */
+const TILE7121 = { wshal: ['water-shallow', 3], wcalm: ['water-calm', 3], wdeep: ['water-deep', 3], wdark: ['water-dark', 3], lava: ['lava-crust', 2.25], snow: ['snow', 3], snowp: ['snow-patchy', 3], ice: ['ice', 3], ffloor: ['forest-floor', 2.25] };
+const M7121 = new Map();
+function tile7121(k) { const T = TILE7121[k], A = T && MAP_ASSETS70['s_' + T[0]]; return A && A.timg ? A.timg : ''; }
+/* копия пути с цветом col, залитая тайлом k (сразу над ним) */
+function over7121(s, col, k, op) {
+  if (!tile7121(k)) return s;
+  const re = new RegExp(`<path d="([^"]*)" fill="${col}"([^>]*)/>`, 'g');
+  return s.replace(re, (m, d) => `${m}<path d="${d}" fill="url(#m711t-${k})"${op < 1 ? ` opacity="${op}"` : ''}/>`);
+}
+function swap7121(s, a, b, k) { return k && !tile7121(k) ? s : s.split(a).join(b); }
+const _fam7121 = famSvg711;
+famSvg711 = function (fam, items, simple) {
+  const s = _fam7121(fam, items, simple);
+  if (fam === 'water' && simple) return s;
+  const c = M7121.get(fam); if (c && c.a === s) return c.b;
+  let r = s;
+  if (fam === 'water') {
+    r = swap7121(r, 'fill="url(#m711t-water)" opacity=".3"', 'fill="url(#m711t-wshal)"', 'wshal');
+    r = swap7121(r, 'fill="#336d86" opacity=".7"', 'fill="url(#m711t-wcalm)" opacity=".85"', 'wcalm');
+    r = swap7121(r, 'fill="#245a74" opacity=".75"', 'fill="url(#m711t-wdeep)" opacity=".7"', 'wdeep');
+    r = swap7121(r, 'fill="#17435c" opacity=".7"', 'fill="url(#m711t-wdark)" opacity=".6"', 'wdark');
+  } else if (fam === 'lava') {
+    if (tile7121('lava')) {
+      r = over7121(r, '#8f2a0a', 'lava', 1);
+      r = r.replace('fill="#d24b0e"', 'fill="#d24b0e" opacity=".1"').replace('fill="#f5841f"', 'fill="#f5841f" opacity=".12"').replace('fill="#ffc14a" opacity=".85"', 'fill="#ffc14a" opacity=".16"');
+    }
+  } else if (fam === 'ice') {
+    if (tile7121('ice')) r = over7121(r, '#bcdbe7', 'ice', 1).replace('fill="#d8eef5" opacity=".7"', 'fill="#d8eef5" opacity=".2"').replace('fill="#eef9fc" opacity=".55"', 'fill="#eef9fc" opacity=".15"');
+  } else if (fam === 'snow') {
+    r = over7121(r, '#eef2f5', 'snowp', 0.85);
+    if (tile7121('snow')) r = over7121(r, '#f3f6f8', 'snow', 1).replace('fill="#ffffff" opacity=".6"', 'fill="#ffffff" opacity=".2"');
+  } else if (fam === 'forest') {
+    if (tile7121('ffloor')) r = over7121(r, '#3a3220', 'ffloor', 1).replace('fill="url(#m711t-leaves)" opacity=".9"', 'fill="url(#m711t-leaves)" opacity=".5"');
+  } else if (fam === 'swamp') r = over7121(r, '#30483f', 'wdark', 0.6);
+  M7121.set(fam, { a: s, b: r });
+  return r;
+};
+/* узоры тайлов — только те, что попали в рисунок */
+const _ground7121 = ground711;
+ground711 = function (V, lines, simple) {
+  const s = _ground7121(V, lines, simple);
+  if (!s) return s;
+  const add = Object.keys(TILE7121).filter(k => s.indexOf(`url(#m711t-${k})`) >= 0 && s.indexOf(`id="m711t-${k}"`) < 0)
+    .map(k => `<pattern id="m711t-${k}" width="${TILE7121[k][1]}" height="${TILE7121[k][1]}" patternUnits="userSpaceOnUse"><image href="${tile7121(k)}" width="${TILE7121[k][1]}" height="${TILE7121[k][1]}" preserveAspectRatio="none"/></pattern>`).join('');
+  return add ? s.replace('</defs>', add + '</defs>') : s;
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
