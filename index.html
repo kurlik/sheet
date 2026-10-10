@@ -4338,7 +4338,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.19.1';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.19.2';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -24777,6 +24777,44 @@ fogSvg73 = function (V, mode) {
   }
   if (!B719.polys) return s;
   return s.replace('<defs>', `<defs><clipPath id="m719b">${B719.polys}</clipPath>`).replace('</mask>', '<g clip-path="url(#m719b)"><use href="#m73in"/></g></mask>');
+};
+/* =====================================================================
+   ВЫПУСК 7.19.2: БРОСОК СОЮЗНИКА У ИГРОКОВ
+   Дальность броска была 1,5 × (1 + мод. Силы) от бросающего: при Силе 10–11 это 1,5 м. Союзник уже стоит
+   вплотную (≈1,5 м), а круг почти целиком занят своей фишкой и фишкой союзника — 9 касаний из 10 давали
+   «Туда не приземлиться: место занято», бросить было некуда. Мастер просто тащит фишку, поэтому у него
+   «работало». Теперь:
+   1) дальность не меньше 3 м (две клетки), сильным по-прежнему 1,5 × (1 + мод. Силы);
+   2) касание по фишке или занятому месту ставит союзника на ближайшее свободное место рядом (до 1,6 м),
+      в пределах круга и без стены на пути.
+   ===================================================================== */
+throwMax71 = function () { return Math.max(3, 1.5 * (1 + (derive().mods.STR || 0))); };
+function aimSpot7192(V, me, t, A, p) {
+  const D = { R: tokR70(t.s) - 0.1, key: t.key, side: 'a', s: t.s, tall: false }, Dw = Object.assign({}, D, { R: 0.4, tall: true });
+  const okAt = q => q.x > 0.3 && q.y > 0.3 && q.x < V.w - 0.3 && q.y < V.h - 0.3 && Math.hypot(q.x - me.x, q.y - me.y) <= A.max + 0.01
+    && free71(V, D, q) && !seg71(V, Dw, { x: t.x, y: t.y }, q, true).block;
+  if (okAt(p)) return p;
+  for (let r = 0.1; r <= 1.601; r += 0.1) {
+    let best = null, bd = 1e9;
+    for (let k = 0; k < 24; k++) {
+      const a = k * Math.PI / 12, q = { x: r2_70(p.x + r * Math.cos(a)), y: r2_70(p.y + r * Math.sin(a)) };
+      if (!okAt(q)) continue;
+      const d = Math.hypot(q.x - t.x, q.y - t.y); if (d < bd) { bd = d; best = q; }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+const _aimTap7192 = aimTap71;
+aimTap71 = function (V, p) {
+  try {
+    const A = M70.aim71, me = A && V.toks.find(x => x.me), t = A && V.toks.find(x => x.key === A.key);
+    if (me && t && Math.hypot(p.x - me.x, p.y - me.y) <= A.max + 1) {
+      const q = aimSpot7192(V, me, t, A, p);
+      if (q) return _aimTap7192(V, q);
+    }
+  } catch (e) { /* дальше обычная проверка */ }
+  return _aimTap7192(V, p);
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
