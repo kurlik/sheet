@@ -1303,6 +1303,38 @@ body.map70-on .toast.show{transform:translate(-50%,0)}
 @media (orientation:landscape) and (max-height:540px){
   body:not(.tv76) .m714-sh{left:auto;top:0;width:min(44vw,380px);max-height:none;border-radius:0;border-top:0;border-left:2px solid #a88a4c}
 }
+/* 7.15 каталог-шторка */
+#m70-bar:has(.m715){padding-top:0}
+@media not ((orientation:landscape) and (max-height:540px)){#m70-bar:has(.m715:not(.fold)){height:46vh;max-height:46vh}}
+.m715-top{position:sticky;top:0;z-index:2;margin:0 -10px 6px;padding:0 10px 6px;background:#10141e;border-bottom:1px solid #262d3b}
+.m715-h{display:block;width:100%;height:20px;padding:0;border:0;background:none}
+.m715-h i{display:block;width:44px;height:4px;margin:7px auto 0;border-radius:2px;background:#5b6475}
+.m715-qrow{display:flex;gap:6px;align-items:stretch}
+.m715-qrow .m75-q{flex:1;min-width:0;margin:0}
+.m715-qrow .m70chip{min-width:44px;padding:0 8px;font-size:17px}
+.m715-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:6px}
+.m715-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:44px;padding:2px 2px;border-radius:9px;border:1px solid #333b4a;background:#151a24;color:#cdbf98;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden}
+.m715-tab span{font-size:16px;line-height:1}
+.m715-tab.on{border-color:#e0bd6e;background:#2a2412;color:#f1dfae}
+.m715-subs{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 6px}
+.m715-subs .m70chip{min-height:30px;padding:2px 9px;font-size:12.5px}
+.m715-subs.one,.m715-off{display:none!important}
+.m715-wrap{flex-wrap:wrap;overflow:visible}
+.m715-l{margin:6px 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8fa0b8}
+.m715-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}
+.m715-grid .m70pal{width:auto;min-width:0;min-height:64px;position:relative;overflow:hidden;-webkit-touch-callout:none;user-select:none}
+.m715-grid > .m70chip{grid-column:1 / -1}
+.m715-grid .m70pal small{max-width:100%;overflow-wrap:break-word;hyphens:auto}
+.m70pal.fav::after{content:'★';position:absolute;top:1px;right:4px;font-size:11px;color:#e0bd6e}
+.m715 .m70-hint{margin-top:8px}
+.m715-tip{margin:6px 0 0;font-size:12px;color:#8fa0b8}
+.m715.q .m715-subs,.m715.q .m715-rec,.m715.q .m715-l,.m715.q .m715-tip,.m715.q .m79-tools,.m715.q .m111-grp{display:none}
+.m715.fold{padding-bottom:2px}
+.m715-fl{display:flex;align-items:center;gap:8px;font-size:13px;color:#cdbf98}
+.m715-fl span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m715-fl b{color:#f1dfae}
+/* тост поверх карты не перехватывает касания (рисование, перетаскивание); сам гаснет */
+body.map70-on .toast{pointer-events:none}
 </style>
 </head>
 <body>
@@ -4295,7 +4327,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.14.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.15.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -23208,6 +23240,153 @@ act70 = function (cmd, el) {
     fx714(k, e.hp - was); gmSave(); paint70(); return;
   }
   return _act714.apply(this, arguments);
+};
+/* ===== 7.15 «Каталог-шторка»: палитра «Стройки» мастера шторкой вместо двух бесконечных лент =====
+   Сверху поиск (всегда на виду) и 4 группы «Строить / Рисовать / Предметы / Опасно», под ними разделы группы
+   переносом строк, «★ Избранное» и «Недавние», ниже сетка 5 в ряд. Шторку можно свернуть до одной строки.
+   Только у мастера в «Стройке»: оборачивает palBar75 последним слоем; data-m="cat75"/"arm"/"q75" и act70 прежние
+   (кнопки разделов чужих групп остаются в разметке скрытыми, порядок тот же — на них опираются тесты).
+   Избранное и недавние — в localStorage этого устройства (в базу не уходят). */
+const LS715 = 'cr-cat715';
+const M715 = (() => {
+  try { const o = JSON.parse(localStorage.getItem(LS715) || '{}'); return { r: Array.isArray(o.r) ? o.r : [], f: Array.isArray(o.f) ? o.f : [], fold: !!o.fold, last: {} }; }
+  catch (e) { return { r: [], f: [], fold: false, last: {} }; }
+})();
+function save715() { try { localStorage.setItem(LS715, JSON.stringify({ r: M715.r, f: M715.f, fold: M715.fold })); } catch (e) { /* приватный режим */ } }
+const GRP715 = [['build', '🧱', 'Строить', ['base', 'room79', 'structure']], ['draw', '🖌', 'Рисовать', ['brush', 'surf', 'ln711']], ['items', '🪑', 'Предметы', null], ['danger', '⚠', 'Опасно', ['hazard']]];
+function grpOf715(c) { const g = GRP715.find(x => x[3] && x[3].indexOf(c) >= 0); return g ? g[0] : 'items'; }
+function cats715() { return ['base', 'brush', 'surf', 'room79', 'ln711'].concat(Object.keys(MAP_CAT75.cats).filter(k => MAP_CAT75.items.some(x => x[2] === k))); }
+const ln715 = k => typeof LN711 !== 'undefined' && LN711[k];
+const ok715 = k => !!(MAP_ASSETS70[k] || ln715(k));
+const name715 = k => (MAP_ASSETS70[k] || ln715(k) || {}).n || '';
+/* родной раздел предмета: из «Недавних» и «Избранного» он ставится так же, как из своего раздела */
+function home715(k) {
+  if (ln715(k)) return 'ln711';
+  if (typeof SURF78 !== 'undefined' && SURF78.indexOf(k) >= 0) return 'surf';
+  if (TILES75.indexOf(k) >= 0) return 'brush';
+  const x = MAP_CAT75.items.find(y => 'c_' + y[0] === k);
+  return x ? x[2] : 'base';
+}
+const _btn715 = palBtn75;
+palBtn75 = function (k) {
+  const h = _btn715.apply(this, arguments);
+  return M715.f.indexOf(k) >= 0 ? h.replace('class="m70pal', 'class="m70pal fav') : h;
+};
+function fold715() {
+  const k = M70.arm, n = k && name715(k);
+  return `<div class="m715 fold"><button type="button" class="m715-h" data-m="fold715" aria-label="Развернуть каталог"><i></i></button>
+    <div class="m715-fl"><button type="button" class="m70chip" data-m="fold715">▴ Каталог</button><span>${n ? 'Выбрано: <b>' + esc(n) + '</b>' : 'Ничего не выбрано'}</span>${n ? `<button type="button" class="m70chip" data-m="arm" data-v="${esc(k)}" aria-label="Снять выбор">✕</button>` : ''}</div></div>`;
+}
+function drawer715(h) {
+  if (M715.fold) return fold715();
+  const t = document.createElement('template'); t.innerHTML = h;
+  const F = t.content, cats = F.querySelector('.m75-cats'); if (!cats) return h;
+  const q = F.querySelector('#m75-q'); if (q) q.remove();
+  const qb = cats.querySelector('[data-m="q75"]'); if (qb) qb.remove();
+  const clr = cats.querySelector('[data-m="clr79"]'); if (clr) clr.remove();
+  const g = grpOf715(M75.cat);
+  let vis = 0;
+  cats.querySelectorAll('[data-m="cat75"]').forEach(b => { if (grpOf715(b.dataset.v) !== g) b.classList.add('m715-off'); else vis++; });
+  cats.classList.remove('m70-scroll'); cats.classList.add('m715-subs'); if (vis < 2) cats.classList.add('one');
+  F.querySelectorAll('.m70-scroll').forEach(x => { if (x.id !== 'm75-pal') x.classList.add('m715-wrap'); });
+  const pal = F.querySelector('#m75-pal');
+  if (pal) {
+    pal.classList.remove('m70-scroll'); pal.classList.add('m715-grid');
+    const fav = M715.f.filter(ok715), rec = M715.r.filter(k => ok715(k) && fav.indexOf(k) < 0).slice(0, 5);
+    const row = ks => ks.map(k => palBtn75(k).replace('data-m="arm"', 'data-m="arm715"')).join('');
+    let top = fav.length ? `<p class="m715-l">★ Избранное</p><div class="m715-grid m715-rec">${row(fav)}</div>` : '';
+    if (rec.length) top += `<p class="m715-l">Недавние</p><div class="m715-grid m715-rec">${row(rec)}</div>`;
+    if (top) {
+      const on = cats.querySelector('[data-m="cat75"].on');
+      pal.insertAdjacentHTML('beforebegin', top + `<p class="m715-l">${on ? esc(on.textContent) : 'Раздел'}</p>`);
+    }
+    F.querySelectorAll('p.m70-hint').forEach(x => F.appendChild(x));   // подсказка вниз: сверху сразу значки
+    if (!fav.length) F.appendChild(t.content.ownerDocument.createRange().createContextualFragment('<p class="m715-tip">★ Удерживайте значок — он попадёт в «Избранное» наверху.</p>'));
+  }
+  const box = document.createElement('div'); box.appendChild(F);
+  return `<div class="m715 ${M75.qOn ? 'q' : ''}"><div class="m715-top">
+    <button type="button" class="m715-h" data-m="fold715" aria-label="Свернуть каталог"><i></i></button>
+    <div class="m715-qrow"><input id="m75-q" class="m75-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Найти: бочка, факел, лава…" value="${esc(M75.q || '')}">${clr ? clr.outerHTML.replace('🧹 Очистить', '🧹') : ''}</div>
+    <div class="m715-tabs">${GRP715.map(([k, ic, n]) => `<button type="button" class="m715-tab ${!M75.qOn && g === k ? 'on' : ''}" data-m="grp715" data-v="${k}"><span>${ic}</span>${n}</button>`).join('')}</div>
+  </div>${box.innerHTML}</div>`;
+}
+const _bar715 = palBar75;
+palBar75 = function () {
+  const h = _bar715.apply(this, arguments);
+  try { return drawer715(h); } catch (e) { return h; }
+};
+/* поиск: пустое поле — снова раздел; переключаем до обработчика 7.5 (он перерисует сетку) */
+document.addEventListener('input', e => {
+  if (!e.target || e.target.id !== 'm75-q') return;
+  const on = !!e.target.value.trim(); if (on === !!M75.qOn) return;
+  M75.qOn = on;
+  const d = document.querySelector('#m70-bar .m715'); if (!d) return;
+  d.classList.toggle('q', on);
+  d.querySelectorAll('[data-m="grp715"]').forEach(b => b.classList.toggle('on', !on && b.dataset.v === grpOf715(M75.cat)));
+}, true);
+function rec715(k) {
+  if (!ok715(k) || M715.r.slice(0, 5).indexOf(k) >= 0) return;   // уже на виду — не переставляем под пальцем
+  M715.r = [k].concat(M715.r.filter(x => x !== k)).slice(0, 12); save715();
+}
+function fav715(k) {
+  if (!ok715(k)) return;
+  const i = M715.f.indexOf(k);
+  if (i >= 0) M715.f.splice(i, 1); else M715.f = M715.f.concat(k).slice(-15);
+  save715();
+  try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) { /* нет вибро */ }
+  toast(i >= 0 ? `«${name715(k)}» убрано из избранного.` : `★ «${name715(k)}» в избранном.`, 'info');
+  paint70();
+}
+const _act715 = act70;
+act70 = function (cmd, b) {
+  const v = b && b.dataset ? b.dataset.v : '';
+  switch (cmd) {
+    case 'fold715': M715.fold = !M715.fold; save715(); paint70(); return;
+    case 'grp715': {
+      const cs = cats715().filter(c => grpOf715(c) === v), c = cs.indexOf(M715.last[v]) >= 0 ? M715.last[v] : cs[0];
+      return c ? act70('cat75', { dataset: { v: c } }) : undefined;
+    }
+    case 'arm715': {
+      M75.qOn = false; M75.q = '';
+      if (palKeys75().indexOf(v) < 0) _act715('cat75', { dataset: { v: home715(v) } });
+      return act70('arm', { dataset: { v } });
+    }
+    case 'cat75': M75.q = ''; M715.last[grpOf715(v)] = v; break;
+    case 'q75': if (M75.qOn) M75.q = ''; break;
+    case 'arm': if (v && M70.arm !== v) rec715(v); break;   // до перерисовки: «Недавние» сразу свежие
+  }
+  const r = _act715(cmd, b);
+  if (cmd === 'cat75') { const bar = $('m70-bar'); if (bar) bar.scrollTop = 0; }
+  return r;
+};
+/* долгое касание значка — в избранное (клик после него глотаем) */
+let lp715 = null, eat715 = false;
+document.addEventListener('pointerdown', e => {
+  eat715 = false; if (lp715) { clearTimeout(lp715.t); lp715 = null; }
+  const b = e.target.closest && e.target.closest('#m70-bar .m715 [data-m="arm"], #m70-bar .m715 [data-m="arm715"]');
+  if (!b || !b.classList.contains('m70pal')) return;
+  lp715 = { x: e.clientX, y: e.clientY, t: setTimeout(() => { lp715 = null; eat715 = true; setTimeout(() => { eat715 = false; }, 600); fav715(b.dataset.v); }, 520) };
+}, true);
+const stop715 = () => { if (lp715) { clearTimeout(lp715.t); lp715 = null; } };
+document.addEventListener('pointerup', stop715, true);
+document.addEventListener('pointercancel', stop715, true);
+document.addEventListener('pointermove', e => { if (lp715 && Math.hypot(e.clientX - lp715.x, e.clientY - lp715.y) > 10) stop715(); }, true);
+document.addEventListener('click', e => {
+  if (!eat715) return; eat715 = false;
+  if (e.target.closest && e.target.closest('#m70-bar')) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('#m70-bar .m70pal')) e.preventDefault(); }, true);
+/* шторка выше старой панели: если вся карта была на виду, при смене высоты сцены она остаётся видна целиком
+   (paint70 иначе сохраняет масштаб, и низ карты уходит под шторку) */
+const _fit715 = fit70;
+fit70 = function (V, focus) {
+  const keep = M70.view, r = _fit715.apply(this, arguments);
+  try {
+    const v = M70.view;
+    if (keep && keep.s && v && !focus && V && (keep.W !== v.W || keep.H !== v.H) && keep.s <= Math.min(keep.W / (V.w + 1), keep.H / (V.h + 1)) * 1.001)
+      Object.assign(keep, { s: v.s, x: v.x, y: v.y, W: v.W, H: v.H });   // paint70 берёт центр и масштаб из keep
+  } catch (e) { /* остаётся как было */ }
+  return r;
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
