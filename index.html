@@ -22141,7 +22141,9 @@ const _bar711 = palBar75;
 palBar75 = function () {
   let h = _bar711();
   const chip = chip75('cat75', 'ln711', '〰 Линии', !M75.qOn && M75.cat === 'ln711');
-  h = /data-v="surf">[^<]*<\/button>/.test(h) ? h.replace(/(data-v="surf">[^<]*<\/button>)/, '$1' + chip) : h.replace(/(data-v="brush">[^<]*<\/button>)/, '$1' + chip);
+  // после «Комнат» (они идут сразу за «Покрытиями»), иначе после «Покрытий» или «Кистей»
+  const at = ['room79', 'surf', 'brush'].find(v => h.indexOf(`data-v="${v}">`) >= 0);
+  if (at) h = h.replace(new RegExp(`(data-v="${at}">[^<]*<\\/button>)`), '$1' + chip);
   const L = M70.arm && LN711[M70.arm];
   if (L) {
     const k = M70.arm, cur = wd711(k);
