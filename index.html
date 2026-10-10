@@ -4224,7 +4224,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.10.1';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.11.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -21596,6 +21596,639 @@ act70 = function (cmd, b) {
     case 'fs79': full79(!U79.full); return;
   }
   return _act79u(cmd, b);
+};
+/* =====================================================================
+   ВЫПУСК 7.11: ЖИВЫЕ ЛИНИИ (вода, дороги, тропы, заборы и стены)
+   Раздел палитры «〰 Линии». Ведёшь пальцем — получается линия (предмет карты l_… или f_… с точками pts и шириной wd).
+   Вода и дороги рисуются не плиткой, а единым полотном: по всем линиям одного вида считается поле расстояний
+   (сетка 0,25 м, плавный минимум — слияния без швов), из него изолинии: берег, кромка с пеной, мель, глубина.
+   Поэтому ручей, впадающий в реку, сливается с ней сам, а озеро — это просто очень широкая вода (кисть 8 м).
+   Тропа сужается к свободным концам, исток реки тоньше устья. Конец линии рядом с такой же линией прилипает к ней.
+   Заборы, стены, изгородь, частокол: линия выпрямляется в прямые пролёты, вдоль них встают картинки каталога
+   (секции подгоняются под длину пролёта); «🚪 Ворота» касанием врезают проход в линию.
+   Механика без предметов-заглушек: вода — трудная местность и вода для молнии (связная вода — одна),
+   забор — преграда по секциям (движение, туман войны, укрытия). Отмена ↶↷, «Очистить → Кисти», сохранённые
+   карты и игроки (public/map.ln711) работают как с обычными предметами. «Простая вода» (на этом устройстве)
+   убирает анимацию и лишние слои для слабых телефонов. Поле пересчитывается только у изменённого вида.
+   ===================================================================== */
+const LN711 = {
+  l_water: { n: 'Вода', fam: 'water', ic: '9a289acee1ab', wds: [[1, 'Ручей'], [2.5, 'Река'], [4, 'Широкая'], [8, 'Озеро']], wd: 2.5, tp: 3, dif: 1, wet: 1 },
+  l_trail: { sn: 'way', n: 'Тропа', fam: 'trail', ic: 'da54ba2db121', wds: [[0.75, 'Узкая'], [1.25, 'Тропа']], wd: 1.25, tp: 3 },
+  l_road: { sn: 'way', n: 'Дорога', fam: 'road', ic: '7e202b2fad8e', wds: [[2.5, 'Дорога'], [3.5, 'Тракт']], wd: 2.5, tp: 0 },
+  l_paved: { sn: 'way', n: 'Мостовая', fam: 'paved', ic: '9e08a007beda', wds: [[3, 'Улица'], [4.5, 'Широкая']], wd: 3, tp: 0 },
+  f_wall: { n: 'Каменная стена', fence: 1, ic: '47368202b36e', pc: ['low-wall'], la: 3, th: 0.75, bt: 0.5, A: { block: 1, low: 1, vs: 0, cv: 0.5 } },
+  f_ruin: { n: 'Разрушенная стена', fence: 1, ic: 'a474801332c6', pc: ['low-wall', 'low-wall-broken'], la: 3, th: 0.75, bt: 0.5, A: { block: 1, low: 1, vs: 0, cv: 0.5 } },
+  f_hedge: { n: 'Живая изгородь', fence: 1, ic: '60a22d931c91', pc: ['yew-hedge'], la: 4.5, th: 0.9, bt: 0.6, A: { block: 1, vs: 1, cv: 0.75 } },
+  f_iron: { n: 'Кованая ограда', fence: 1, ic: 'b1430d1a8854', pc: ['fence-iron'], la: 1.5, th: 1.2, bt: 0.3, A: { block: 1, vs: 0, cv: 0 } },
+  f_stakes: { n: 'Частокол', fence: 1, ic: '5e7bd343125a', pc: ['stakes'], la: 1.5, th: 1.2, bt: 0.5, A: { block: 1, low: 1, vs: 0, cv: 0.5 } }
+};
+const FAM711 = ['trail', 'road', 'paved', 'water'];   // порядок слоёв: дороги под водой
+const M711 = { d: null, erase: false, gate: false, wd: {}, cache: new Map(), cl: new WeakMap(), comp: { sig: '', map: new Map() }, fz: { sig: '', list: [] } };
+const SIMPLE711_KEY = 'cr-map711-simple';
+Object.entries(LN711).forEach(([k, L]) => {
+  MAP_ASSETS70[k] = { n: L.n, ln711: 1, svg: '', w: 1, h: 1, floor: L.fence ? 0 : 1, cat: 'ln711', dif: 0, pic: IMG75(L.ic) };
+  if (L.fence) MAP_ASSETS70['_f711' + k] = Object.assign({ n: L.n, svg: '', virt: 1, hit: 1 }, L.A);
+});
+MAP_ASSETS70._g711 = { n: '', svg: '', floor: 1, ln711: 2 };   // место слоя воды и дорог среди пола
+MAP_ASSETS70._h711 = { n: '', svg: '', ln711: 2 };              // место заборов среди предметов
+MAP_ASSETS70._w711 = { n: 'Вода', svg: '', virt: 1, wet: 1, dif: 1 };
+const KEYS711 = Object.keys(LN711);
+const isLn711 = i => !!(i && LN711[i.k] && Array.isArray(i.pts));
+const simple711 = () => { const v = lsGet(SIMPLE711_KEY); if (v != null) return !!v; const c = navigator.hardwareConcurrency || 8, mem = navigator.deviceMemory || 8; return c <= 4 || mem <= 2; };
+const f2_711 = v => Math.round(v * 100) / 100;
+
+/* ---------- геометрия ---------- */
+function chaikin711(P, n, closed) {
+  for (let k = 0; k < n && P.length > 2; k++) {
+    const Q = closed ? [] : [P[0]], N = P.length, last = closed ? N : N - 1;
+    for (let i = 0; i < last; i++) {
+      const a = P[i], b = P[(i + 1) % N];
+      Q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    if (!closed) Q.push(P[N - 1]);
+    P = Q;
+  }
+  return P;
+}
+function resample711(P, step) {
+  if (P.length < 2) return P.slice();
+  const out = [P[0]]; let carry = 0;
+  for (let i = 1; i < P.length; i++) {
+    const a = P[i - 1], b = P[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]); let s = step - carry;
+    while (s <= L) { out.push([a[0] + (b[0] - a[0]) * s / L, a[1] + (b[1] - a[1]) * s / L]); s += step; }
+    carry = L - (s - step);
+  }
+  const e = P[P.length - 1], l = out[out.length - 1];
+  if (Math.hypot(e[0] - l[0], e[1] - l[1]) > step * 0.3) out.push(e); else out[out.length - 1] = e;
+  return out;
+}
+function rdp711(P, tol) {
+  if (P.length < 3) return P.slice();
+  const keep = new Uint8Array(P.length); keep[0] = keep[P.length - 1] = 1;
+  const st = [[0, P.length - 1]];
+  while (st.length) {
+    const [a, b] = st.pop(), A = P[a], B = P[b], dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1e-9;
+    let md = 0, mi = -1;
+    for (let i = a + 1; i < b; i++) { const d = Math.abs((P[i][0] - A[0]) * dy - (P[i][1] - A[1]) * dx) / L; if (d > md) { md = d; mi = i; } }
+    if (md > tol && mi > 0) { keep[mi] = 1; st.push([a, mi], [mi, b]); }
+  }
+  return P.filter((p, i) => keep[i]);
+}
+function segD711(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy, t = L2 ? clamp70(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2, 0, 1) : 0;
+  return { d: Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy), t };
+}
+function bbox711(i) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  i.pts.forEach(p => { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); });
+  const r = (+i.wd || 1) / 2;
+  i.x = f2_711((x0 + x1) / 2); i.y = f2_711((y0 + y1) / 2); i.w = f2_711(x1 - x0 + 2 * r); i.h = f2_711(y1 - y0 + 2 * r);
+  return i;
+}
+/* осевая линия с радиусом в каждой точке: [[x, y, r]] (сглажена, шаг ~ полрадиуса, сужение у свободных концов) */
+function center711(i) {
+  const c = M711.cl.get(i);
+  if (c && c.pts === i.pts && c.wd === i.wd && c.tp === i.tp) return c.C;
+  const R = Math.max(0.2, (+i.wd || 1) / 2);
+  let P = i.pts.length > 2 ? chaikin711(i.pts, 2, false) : i.pts.slice();
+  P = resample711(P, clamp70(R * 0.5, 0.2, 1));
+  const S = [0]; for (let k = 1; k < P.length; k++) S.push(S[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]));
+  const T = S[S.length - 1], Ls = Math.min(3, T / 3), tp = +i.tp || 0;
+  const C = P.map((p, k) => {
+    let f = 1;
+    if (tp & 1 && Ls > 0.3 && S[k] < Ls) f = Math.min(f, 0.4 + 0.6 * S[k] / Ls);
+    if (tp & 2 && Ls > 0.3 && T - S[k] < Ls) f = Math.min(f, 0.4 + 0.6 * (T - S[k]) / Ls);
+    return [p[0], p[1], R * f];
+  });
+  // широкая вода — неровный берег: радиус «гуляет» вдоль линии, одиночное пятно — не круг, а клякса
+  if (R >= 2 && C.length === 1 && LN711[i.k] && LN711[i.k].fam === 'water') {
+    const [x, y] = C[0], h = hash711(i.id), n = 7, B = [];
+    for (let q = 0; q <= n; q++) { const a = (q % n) / n * Math.PI * 2 + (h % 628) / 100, d = R * (0.35 + 0.2 * Math.sin(q * 2.3 + h % 7)); B.push([x + Math.cos(a) * d, y + Math.sin(a) * d, R * (0.62 + 0.12 * Math.cos(q * 1.7 + h % 5))]); }
+    M711.cl.set(i, { pts: i.pts, wd: i.wd, tp: i.tp, C: B });
+    return B;
+  }
+  if (R >= 2 && LN711[i.k] && LN711[i.k].fam === 'water') { const ph = hash711(i.id) % 628 / 100; C.forEach((c, k) => { c[2] *= 1 + 0.13 * Math.sin(S[k] * 0.55 + ph) + 0.06 * Math.sin(S[k] * 1.7 + ph * 2); }); }
+  M711.cl.set(i, { pts: i.pts, wd: i.wd, tp: i.tp, C });
+  return C;
+}
+/* расстояние от точки до края линии (минус — внутри) */
+function inside711(i, p) {
+  const C = center711(i); let best = 1e9;
+  if (C.length === 1) return Math.hypot(p.x - C[0][0], p.y - C[0][1]) - C[0][2];
+  for (let k = 1; k < C.length; k++) { const s = segD711([p.x, p.y], C[k - 1], C[k]); best = Math.min(best, s.d - (C[k - 1][2] + (C[k][2] - C[k - 1][2]) * s.t)); }
+  return best;
+}
+
+/* ---------- поле расстояний и изолинии ---------- */
+function field711(items, M) {
+  const Cs = items.map(center711).filter(C => C.length);
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  Cs.forEach(C => C.forEach(([x, y, r]) => { x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r); }));
+  x0 -= M; y0 -= M; x1 += M; y1 += M;
+  let h = 0.25; while (((x1 - x0) / h + 2) * ((y1 - y0) / h + 2) > 160000) h *= 1.25;
+  const nx = Math.ceil((x1 - x0) / h) + 2, ny = Math.ceil((y1 - y0) / h) + 2, BIG = 9;
+  const F = new Float32Array(nx * ny).fill(BIG), T = new Float32Array(nx * ny), K = 0.6;
+  Cs.forEach(C => {
+    let a0 = 1e9, b0 = 1e9, a1 = -1e9, b1 = -1e9;
+    C.forEach(([x, y, r]) => { a0 = Math.min(a0, x - r); b0 = Math.min(b0, y - r); a1 = Math.max(a1, x + r); b1 = Math.max(b1, y + r); });
+    const I0 = Math.max(0, Math.floor((a0 - M - x0) / h)), I1 = Math.min(nx - 1, Math.ceil((a1 + M - x0) / h));
+    const J0 = Math.max(0, Math.floor((b0 - M - y0) / h)), J1 = Math.min(ny - 1, Math.ceil((b1 + M - y0) / h));
+    for (let j = J0; j <= J1; j++) T.fill(BIG, j * nx + I0, j * nx + I1 + 1);
+    const seg = (a, b) => {
+      const r = Math.max(a[2], b[2]) + M;
+      const i0 = Math.max(I0, Math.floor((Math.min(a[0], b[0]) - r - x0) / h)), i1 = Math.min(I1, Math.ceil((Math.max(a[0], b[0]) + r - x0) / h));
+      const j0 = Math.max(J0, Math.floor((Math.min(a[1], b[1]) - r - y0) / h)), j1 = Math.min(J1, Math.ceil((Math.max(a[1], b[1]) + r - y0) / h));
+      const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+      for (let j = j0; j <= j1; j++) {
+        const py = y0 + j * h;
+        for (let i = i0; i <= i1; i++) {
+          const px = x0 + i * h; let t = L2 ? ((px - a[0]) * dx + (py - a[1]) * dy) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const v = Math.hypot(px - a[0] - t * dx, py - a[1] - t * dy) - (a[2] + (b[2] - a[2]) * t), n = j * nx + i;
+          if (v < T[n]) T[n] = v;
+        }
+      }
+    };
+    if (C.length === 1) seg(C[0], C[0]); else for (let k = 1; k < C.length; k++) seg(C[k - 1], C[k]);
+    for (let j = J0; j <= J1; j++) for (let i = I0; i <= I1; i++) {
+      const n = j * nx + i, a = F[n], b = T[n], d = Math.abs(a - b);
+      F[n] = d >= K ? Math.min(a, b) : Math.min(a, b) - (K - d) * (K - d) / (4 * K);   // плавное слияние
+    }
+  });
+  return { F, nx, ny, x0, y0, h };
+}
+function iso711(G, lv) {
+  const { F, nx, ny, x0, y0, h } = G, val = (i, j) => F[j * nx + i] - lv, P = new Map(), off = nx * ny;
+  const ep = (t, i, j) => {
+    const id = t ? off + j * nx + i : j * nx + i;
+    if (!P.has(id)) { const a = val(i, j), b = t ? val(i, j + 1) : val(i + 1, j), s = a / (a - b); P.set(id, t ? [x0 + i * h, y0 + (j + s) * h] : [x0 + (i + s) * h, y0 + j * h]); }
+    return id;
+  };
+  const S = [];
+  for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const v0 = val(i, j), v1 = val(i + 1, j), v2 = val(i + 1, j + 1), v3 = val(i, j + 1);
+    const c = (v0 < 0 ? 8 : 0) | (v1 < 0 ? 4 : 0) | (v2 < 0 ? 2 : 0) | (v3 < 0 ? 1 : 0);
+    if (!c || c === 15) continue;
+    const e0 = () => ep(0, i, j), e1 = () => ep(1, i + 1, j), e2 = () => ep(0, i, j + 1), e3 = () => ep(1, i, j), mid = (v0 + v1 + v2 + v3) / 4 < 0;
+    switch (c) {
+      case 1: case 14: S.push([e3(), e2()]); break;
+      case 2: case 13: S.push([e2(), e1()]); break;
+      case 3: case 12: S.push([e3(), e1()]); break;
+      case 4: case 11: S.push([e0(), e1()]); break;
+      case 6: case 9: S.push([e0(), e2()]); break;
+      case 7: case 8: S.push([e3(), e0()]); break;
+      case 5: if (mid) S.push([e3(), e0()], [e1(), e2()]); else S.push([e0(), e1()], [e3(), e2()]); break;
+      case 10: if (mid) S.push([e0(), e1()], [e2(), e3()]); else S.push([e3(), e0()], [e1(), e2()]); break;
+    }
+  }
+  const adj = new Map(); S.forEach((s, n) => s.forEach(e => { const L = adj.get(e); if (L) L.push(n); else adj.set(e, [n]); }));
+  const used = new Uint8Array(S.length), loops = [];
+  for (let n0 = 0; n0 < S.length; n0++) {
+    if (used[n0]) continue;
+    const L = []; let n = n0, e = S[n0][0];
+    while (n != null && !used[n]) {
+      used[n] = 1; L.push(P.get(e)); e = S[n][0] === e ? S[n][1] : S[n][0];
+      const nb = adj.get(e); n = nb ? nb.find(m => !used[m]) : null;
+    }
+    if (L.length > 3) loops.push(L);
+  }
+  return loops.map(L => chaikin711(L, 1, true)).map(L => 'M' + L.map(p => f2_711(p[0]) + ' ' + f2_711(p[1])).join('L') + 'Z').join('');
+}
+
+/* ---------- рисунок: вода и дороги одним полотном на вид ---------- */
+const TEX711 = { water: '6c6b3285334f', dirt: '702836808bd5', cobble: '551776ecd250', mud: 'a36bac303f90' };
+function famSvg711(fam, items, simple) {
+  const sig = fam + (simple ? 1 : 0) + JSON.stringify(items.map(i => [i.wd, i.tp, i.pts]));
+  const c = M711.cache.get(fam);
+  if (c && c.sig === sig) return c.s;
+  let s = '';
+  const p = (d, a) => d ? `<path d="${d}" ${a}/>` : '';
+  if (fam === 'water') {
+    const G = field711(items, 1.2), L = lv => iso711(G, lv);
+    for (let j = 0; j < G.ny; j++) for (let k = 0; k < G.nx; k++) {   // берег не по линейке: лёгкая рябь контура
+      const x = G.x0 + k * G.h, y = G.y0 + j * G.h, n = j * G.nx + k;
+      if (G.F[n] < 2) G.F[n] += 0.09 * (Math.sin(x * 1.3 + Math.sin(y * 0.9)) + Math.sin(y * 1.1 + 1.7 + Math.sin(x * 0.7)));
+    }
+    const d0 = L(0);
+    s = p(L(0.45), 'fill="#3f4a2c" opacity=".55"') + p(L(0.22), 'fill="#4d5532" opacity=".85"') + p(L(0.22), 'fill="url(#m711t-mud)" opacity=".3"')
+      + p(d0, 'fill="#3f7c94"') + p(d0, 'fill="url(#m711t-water)" opacity=".3"')
+      + p(L(-0.35), 'fill="#336d86" opacity=".7"') + p(L(-0.75), 'fill="#245a74" opacity=".75"') + (simple ? '' : p(L(-1.6), 'fill="#17435c" opacity=".7"'))
+      + p(d0, 'fill="none" stroke="#e8f5f1" stroke-width=".12" opacity=".75"')
+      + (simple ? '' : p(L(-0.1), 'fill="none" stroke="#e8f5f1" stroke-width=".04" stroke-dasharray=".5 .2" opacity=".35" class="m711-foam"'));
+    if (!simple) s += items.filter(i => i.wd <= 4 && i.pts.length > 1).map(i => {
+      const C = center711(i);
+      return [[-0.4, '.4 1', 0], [0.05, '.6 1.5', 0.7], [0.45, '.3 .75', 0.4]].map(([o, da, ph]) => {
+        const Q = C.map((q, k) => { const a = C[Math.max(0, k - 1)], b = C[Math.min(C.length - 1, k + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [q[0] - dy / l * q[2] * o, q[1] + dx / l * q[2] * o]; });
+        return `<path d="M${Q.map(q => f2_711(q[0]) + ' ' + f2_711(q[1])).join('L')}" fill="none" stroke="#d6eef3" stroke-width=".05" stroke-dasharray="${da}" stroke-dashoffset="${ph}" stroke-linecap="round" opacity=".3" class="m711-flow"/>`;
+      }).join('');
+    }).join('');
+  } else {
+    const G = field711(items, 0.6), d0 = iso711(G, 0);
+    if (fam === 'paved') s = p(iso711(G, 0.18), 'fill="#26231f" opacity=".9"') + p(d0, 'fill="#6b665c"') + p(d0, 'fill="url(#m711t-cobble)"') + p(iso711(G, -0.12), 'fill="none" stroke="#1c1a17" stroke-width=".06" opacity=".5"');
+    else {
+      const ed = fam === 'road' ? 0.2 : 0.14;
+      s = p(iso711(G, ed + 0.12), 'fill="#2e2416" opacity=".25"') + p(iso711(G, ed), 'fill="#3a2c1b" opacity=".45"') + p(d0, 'fill="#8a6a45"') + p(d0, 'fill="url(#m711t-dirt)" opacity=".9"')
+        + (fam === 'road' ? p(iso711(G, -0.55), 'fill="#2a1e10" opacity=".1"') : p(iso711(G, -0.2), 'fill="#f0d9a8" opacity=".07"'));
+    }
+  }
+  M711.cache.set(fam, { sig, s });
+  return s;
+}
+function ground711(V, lines, simple) {
+  const by = {}; lines.forEach(i => { const L = LN711[i.k]; if (L && L.fam) (by[L.fam] = by[L.fam] || []).push(i); });
+  const fams = FAM711.filter(f => by[f]);
+  const D = M711.d && !LN711[M711.d.k].fence ? M711.d : null;
+  if (!fams.length && !D) return '';
+  const pat = (id, h, sz) => `<pattern id="m711t-${id}" width="${sz}" height="${sz}" patternUnits="userSpaceOnUse"><image href="${IMG75(h)}" width="${sz}" height="${sz}" preserveAspectRatio="none"/></pattern>`;
+  const need = new Set(fams.map(f => f === 'water' ? ['water', 'mud'] : f === 'paved' ? ['cobble'] : ['dirt']).flat());
+  let s = `<defs><clipPath id="m711c"><rect width="${V.w}" height="${V.h}"/></clipPath>${[...need].map(t => pat(t, TEX711[t], t === 'cobble' ? 1.5 : 2.25)).join('')}</defs><g clip-path="url(#m711c)" pointer-events="none">`;
+  fams.forEach(f => { try { s += famSvg711(f, by[f], simple); } catch (e) { /* один вид не роняет карту */ } });
+  if (D && D.pts.length) {
+    const L = LN711[D.k], col = L.fam === 'water' ? '#5fb6d0' : L.fam === 'paved' ? '#9a958a' : '#b08a5a';
+    s += D.erase ? '' : `<path d="M${D.pts.map(q => f2_711(q[0]) + ' ' + f2_711(q[1])).join('L')}" fill="none" stroke="${col}" stroke-width="${D.wd}" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>`;
+  }
+  return s + '</g>';
+}
+/* заборы: секции картинок каталога вдоль прямых пролётов, ворота — разрывы */
+function pieces711(i) {
+  const L = LN711[i.k], P = i.pts, gt = Array.isArray(i.gt) ? i.gt : [], out = [], GW = 1.5;
+  let s0 = 0;
+  for (let k = 1; k < P.length; k++) {
+    const a = P[k - 1], b = P[k], len = Math.hypot(b[0] - a[0], b[1] - a[1]); if (len < 0.05) continue;
+    let parts = [[0, len]];
+    gt.forEach(g => { const u0 = g - GW / 2 - s0, u1 = g + GW / 2 - s0; parts = parts.flatMap(([x, y]) => u1 <= x || u0 >= y ? [[x, y]] : [[x, Math.max(x, u0)], [Math.min(y, u1), y]].filter(q => q[1] - q[0] > 0.3)); });
+    const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len, ang = Math.atan2(uy, ux) * 180 / Math.PI;
+    parts.forEach(([x, y]) => {
+      const n = Math.max(1, Math.round((y - x) / L.la)), pl = (y - x) / n;
+      for (let q = 0; q < n; q++) { const m = x + pl * (q + 0.5); out.push({ x: a[0] + ux * m, y: a[1] + uy * m, len: pl, ang, n: out.length }); }
+    });
+    s0 += len;
+  }
+  return out;
+}
+function hash711(s) { let h = 2166136261; s = String(s); for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); } return h >>> 0; }
+function fence711(i, V) {
+  const L = LN711[i.k]; let s = '';
+  pieces711(i).forEach(q => {
+    const pc = L.pc[L.pc.length > 1 && hash711(i.id + q.n) % 3 === 0 ? 1 : 0], fl = hash711(i.id + 'f' + q.n) & 1;
+    s += `<g transform="translate(${f2_711(q.x)} ${f2_711(q.y)}) rotate(${f2_711(q.ang)})${fl && L.la > 2 ? ' scale(-1 1)' : ''}"><use href="#m70a-c_${pc}" x="${f2_711(-q.len / 2 - 0.04)}" y="${f2_711(-L.th / 2)}" width="${f2_711(q.len + 0.08)}" height="${L.th}"/></g>`;
+  });
+  return s;
+}
+const _svg711 = svg70;
+svg70 = function (V) {
+  try {
+    const lines = V.items.filter(isLn711).filter(i => !i.hid);
+    const D = M711.d, fe = lines.filter(i => LN711[i.k].fence);
+    if (lines.length || D) {
+      const simple = simple711();
+      fe.forEach(i => LN711[i.k].pc.forEach(c => M75.need.add('c_' + c)));
+      const g = ground711(V, lines, simple);
+      let f = fe.map(i => fence711(i, V)).join('');
+      if (D && LN711[D.k].fence && !D.erase && D.pts.length > 1) f += `<path d="M${D.pts.map(q => f2_711(q[0]) + ' ' + f2_711(q[1])).join('L')}" fill="none" stroke="#c9a25a" stroke-width=".25" stroke-dasharray=".4 .2" stroke-linecap="round" opacity=".8"/>`;
+      M711.g = g; M711.f = f;
+      const rest = V.items.filter(i => !isLn711(i));
+      V = Object.assign({}, V, { items: [{ id: '_g711', k: '_g711', x: 0, y: 0, w: 0, h: 0 }, { id: '_h711', k: '_h711', x: 0, y: 0, w: 0, h: 0 }].concat(rest) });
+    }
+  } catch (e) { M711.g = M711.f = ''; /* линии не должны ронять карту */ }
+  return _svg711(V);
+};
+const _item711 = itemSvg70;
+itemSvg70 = function (i, V) {
+  if (i && i.k === '_g711') { const s = M711.g || ''; M711.g = ''; return s; }
+  if (i && i.k === '_h711') { const s = M711.f || ''; M711.f = ''; return s; }
+  if (i && LN711[i.k]) return '';
+  return _item711(i, V);
+};
+const _hit711 = hitItem70;
+hitItem70 = function (V, p) { return _hit711(Object.assign({}, V, { items: V.items.filter(i => !(MAP_ASSETS70[i.k] || {}).ln711) }), p); };
+
+/* ---------- механика: вода — трудная местность и вода; забор — преграда ---------- */
+function fenceBoxes711(V) {
+  const fe = (V.items || []).filter(i => isLn711(i) && LN711[i.k].fence && !i.hid);
+  if (!fe.length) return [];
+  const sig = JSON.stringify(fe.map(i => [i.k, i.pts, i.gt]));
+  if (M711.fz.sig === sig) return M711.fz.list;
+  const out = [];
+  fe.forEach(i => { const L = LN711[i.k]; pieces711(i).forEach(q => out.push({ id: '_f711' + out.length, k: '_f711' + i.k, x: f2_711(q.x), y: f2_711(q.y), w: f2_711(q.len), h: L.bt, r: f2_711(q.ang), hid: 0 })); });
+  M711.fz = { sig, list: out };
+  return out;
+}
+const withFence711 = V => { try { const b = V && fenceBoxes711(V); return b && b.length ? Object.assign({}, V, { items: V.items.concat(b) }) : V; } catch (e) { return V; } };
+const _pen711 = pen70;
+pen70 = function (V, D, c) { return _pen711(withFence711(V), D, c); };
+if (typeof cover72 === 'function') { const _cov711 = cover72; cover72 = function (V) { return _cov711.apply(this, [withFence711(V)].concat([].slice.call(arguments, 1))); }; }
+if (typeof occ73 === 'function') { const _occ711 = occ73; occ73 = function (V) { return _occ711(withFence711(V)); }; }
+const waterOf711 = V => (V.items || []).filter(i => isLn711(i) && LN711[i.k].wet && !i.hid);
+if (typeof difAt72 === 'function') {
+  const _dif711 = difAt72;
+  difAt72 = function (V, p) { if (_dif711(V, p)) return true; try { return (V.items || []).some(i => isLn711(i) && LN711[i.k].dif && !i.hid && inside711(i, p) < 0); } catch (e) { return false; } };
+}
+/* связная вода: линии, что касаются друг друга, — один водоём (молния 7.4 бьёт по всем в нём) */
+function comp711(W) {
+  const sig = W.map(i => i.id + ':' + i.pts.length + ':' + i.wd).join(';');
+  if (M711.comp.sig === sig) return M711.comp.map;
+  const par = W.map((x, n) => n), f = n => par[n] === n ? n : (par[n] = f(par[n]));
+  for (let a = 0; a < W.length; a++) for (let b = a + 1; b < W.length; b++) {
+    if (f(a) === f(b)) continue;
+    const Ca = center711(W[a]), Cb = center711(W[b]);
+    if (Ca.some(p => Cb.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < p[2] + q[2] + 0.3))) par[f(a)] = f(b);
+  }
+  const map = new Map(); W.forEach((i, n) => map.set(i.id, W[f(n)].id));
+  M711.comp = { sig, map };
+  return map;
+}
+if (typeof wetAt74 === 'function') {
+  const _wet711 = wetAt74;
+  wetAt74 = function (V, t) {
+    const r = _wet711(V, t);
+    try {
+      const W = waterOf711(V); if (!W.length) return r;
+      const hit = W.filter(i => inside711(i, t) < 0.2); if (!hit.length) return r;
+      const cm = comp711(W), seen = new Set();
+      hit.forEach(i => { const id = 'w711:' + cm.get(i.id); if (!seen.has(id)) { seen.add(id); r.push({ id, k: '_w711', x: i.x, y: i.y, w: i.w, h: i.h, r: 0 }); } });
+    } catch (e) { /* молния без линий */ }
+    return r;
+  };
+}
+
+/* ---------- игрокам: линии отдельным списком (точки не помещаются в строку предмета) ---------- */
+const _pub711 = pubData70;
+pubData70 = function () {
+  const d = _pub711.apply(this, arguments); if (!d) return d;
+  const L = gmMap70().items.filter(i => isLn711(i) && !i.hid);
+  if (Array.isArray(d.it)) d.it = d.it.filter(a => !LN711[a[1]]);
+  if (L.length) d.ln711 = L.slice(0, 300).map(i => [String(i.id), i.k, f2_711(+i.wd || 1), i.pts.slice(0, 400).map(p => [f2_711(p[0]), f2_711(p[1])]), +i.tp || 0, Array.isArray(i.gt) && i.gt.length ? i.gt.map(f2_711) : 0]);
+  return d;
+};
+const lnOf711 = a => {
+  if (!Array.isArray(a) || !LN711[a[1]] || !Array.isArray(a[3])) return null;
+  const pts = a[3].filter(Array.isArray).map(p => [+p[0] || 0, +p[1] || 0]); if (!pts.length) return null;
+  return bbox711({ id: String(a[0]), k: a[1], wd: +a[2] || 1, pts, tp: +a[4] || 0, gt: Array.isArray(a[5]) ? a[5].map(Number) : [], r: 0, hid: 0, o: 0 });
+};
+const _plView711 = plView70;
+plView70 = function () {
+  const V = _plView711.apply(this, arguments); if (!V) return V;
+  const pm = plPub70() || {};
+  if (Array.isArray(pm.ln711)) {
+    const prev = M711.pl || { js: '', list: [] }, js = JSON.stringify(pm.ln711);
+    if (prev.js !== js) M711.pl = { js, list: pm.ln711.map(lnOf711).filter(Boolean) };   // те же объекты — кэш поля не сбрасывается
+    V.items = V.items.concat(M711.pl.list);
+  }
+  return V;
+};
+
+/* ---------- «Очистить»: линии — это кисти ---------- */
+if (typeof clrKind79 === 'function') {
+  const _clr711 = clrKind79;
+  clrKind79 = function (i) { return LN711[i && i.k] ? 'brush' : _clr711(i); };
+}
+
+/* ---------- рисование пальцем ---------- */
+const lnOn711 = V => V && V.gmv && M70.mode === 'edit' && M70.arm && LN711[M70.arm];
+const wd711 = k => { const L = LN711[k]; return L.fence ? 0.5 : (M711.wd[k] || L.wd); };
+const snapG711 = k => LN711[k].sn || LN711[k].fam || k;   // тропа прилипает и к дороге, и к мостовой
+function near711(m, k, p, R, skip) {
+  const fam = snapG711(k); let best = null;
+  m.items.forEach(i => {
+    if (!isLn711(i) || i === skip || snapG711(i.k) !== fam) return;
+    const P = i.pts;
+    for (let n = 0; n < P.length; n++) {
+      const a = P[n], b = P[n + 1] || a, s = segD711([p.x, p.y], a, b);
+      if (s.d < R && (!best || s.d < best.d)) best = { d: s.d, x: a[0] + (b[0] - a[0]) * s.t, y: a[1] + (b[1] - a[1]) * s.t, i, end: n === 0 && s.t < 0.01 || n >= P.length - 2 && s.t > 0.99 };
+    }
+  });
+  return best;
+}
+function commit711(m, D) {
+  const L = LN711[D.k]; let P = D.pts.map(p => p.slice());
+  if (!P.length) return;
+  const wd = D.wd, R = L.fence ? 0.8 : Math.max(0.8, wd * 0.6);
+  let tp = L.tp || 0, sa = false, sb = false;
+  const a = near711(m, D.k, { x: P[0][0], y: P[0][1] }, R);
+  if (a) { P[0] = [a.x, a.y]; sa = true; }
+  if (P.length > 1) {
+    const e = P[P.length - 1], self = Math.hypot(e[0] - P[0][0], e[1] - P[0][1]) < R && P.length > 3;
+    const b = self ? { x: P[0][0], y: P[0][1] } : near711(m, D.k, { x: e[0], y: e[1] }, R);
+    if (b) { P[P.length - 1] = [b.x, b.y]; sb = true; }
+  }
+  if (L.fam === 'water' && sa && !sb && P.length > 1) { P.reverse(); sa = false; sb = true; }   // приток ведут от реки — течение всё равно к устью
+  tp &= (sa ? 0 : 1) | (sb ? 0 : 2);
+  P = L.fence ? rdp711(P, 0.35) : rdp711(P, 0.06);
+  if (L.fence && m.snap) P = P.map(p => [Math.round(p[0] / 0.75) * 0.75, Math.round(p[1] / 0.75) * 0.75]);
+  P = P.map(p => [f2_711(p[0]), f2_711(p[1])]).filter((p, n, A) => !n || Math.hypot(p[0] - A[n - 1][0], p[1] - A[n - 1][1]) > 0.05);
+  if (L.fence && P.length < 2) return;
+  if (P.length === 1 && wd < 4) return;   // касание: пятно только у широкой воды (озеро)
+  if (m.items.filter(isLn711).length >= 300) { toast('Линий слишком много (300). Сотрите лишние.', 'info'); return; }
+  m.items.push(bbox711({ id: 'i' + uid() + Math.floor(Math.random() * 1e3), k: D.k, pts: P, wd: L.fence ? undefined : wd, tp, r: 0, hid: 0, o: 0 }));
+}
+/* стёрка: точки линий этого вида под кистью убираются, линия рвётся на куски */
+function erase711(m, k, p, R) {
+  const fam = LN711[k].fam || k; let ch = false; const out = [];
+  m.items.forEach(i => {
+    if (!isLn711(i) || (LN711[i.k].fam || i.k) !== fam) { out.push(i); return; }
+    const fen = !!LN711[i.k].fence, rr = R + (fen ? 0.3 : (+i.wd || 1) / 2 * 0.6);
+    if (!i.pts.some((q, n) => segD711([p.x, p.y], q, i.pts[n + 1] || q).d < rr)) { out.push(i); return; }
+    ch = true;
+    const dense = i.pts.length > 1 ? resample711(i.pts, 0.25) : i.pts, parts = [[]];
+    dense.forEach(q => { if (Math.hypot(q[0] - p.x, q[1] - p.y) < rr) { if (parts[parts.length - 1].length) parts.push([]); } else parts[parts.length - 1].push(q); });
+    const keep = parts.filter(P => fen ? P.length > 2 : P.length > 1 || (P.length === 1 && (+i.wd || 1) >= 4)), last = keep.length - 1;
+    keep.forEach((P, n) => {
+      P = (fen ? rdp711(P, 0.2) : rdp711(P, 0.06)).map(q => [f2_711(q[0]), f2_711(q[1])]);
+      out.push(bbox711(Object.assign({}, i, { id: n ? 'i' + uid() + Math.floor(Math.random() * 1e3) : i.id, pts: P, gt: [], tp: ((+i.tp || 0) & 1) * (n === 0) | ((+i.tp || 0) & 2) * (n === last) })));
+    });
+  });
+  if (ch) m.items.splice(0, m.items.length, ...out);
+  return ch;
+}
+function gate711(m, p) {
+  let best = null;
+  m.items.forEach(i => {
+    if (!isLn711(i) || !LN711[i.k].fence) return;
+    let s0 = 0;
+    for (let n = 1; n < i.pts.length; n++) {
+      const a = i.pts[n - 1], b = i.pts[n], len = Math.hypot(b[0] - a[0], b[1] - a[1]), s = segD711([p.x, p.y], a, b);
+      if (s.d < 1 && (!best || s.d < best.d)) best = { d: s.d, i, at: s0 + s.t * len };
+      s0 += len;
+    }
+  });
+  if (!best) { toast('Коснитесь забора или стены, чтобы врезать ворота.', 'info'); return false; }
+  const i = best.i, gt = Array.isArray(i.gt) ? i.gt.slice() : [], n = gt.findIndex(g => Math.abs(g - best.at) < 1.5);
+  if (n >= 0) gt.splice(n, 1); else gt.push(f2_711(best.at));
+  i.gt = gt;
+  return true;
+}
+const _down711 = down70;
+down70 = function (e) {
+  const r = _down711.apply(this, arguments);
+  M711.d = null;
+  if (M70.ptrs.size !== 1) return r;
+  const V = M70.V; if (!lnOn711(V) || !M70.g) return r;
+  M70.drag = null;
+  const p = M70.g.p;
+  M711.d = { k: M70.arm, wd: wd711(M70.arm), erase: M711.erase, gate: M711.gate && LN711[M70.arm].fence, pts: [[p.x, p.y]], moved: false };
+  if (M711.d.erase) { if (erase711(gmMap70(), M70.arm, p, Math.max(0.5, wd711(M70.arm) / 2))) paintSoon70(); }
+  return r;
+};
+const _move711 = move70;
+move70 = function (e) {
+  const D = M711.d;
+  if (D && M70.ptrs.has(e.pointerId) && M70.ptrs.size === 1) {
+    M70.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = M70.g; if (g && !g.moved && Math.hypot(e.clientX - g.sx, e.clientY - g.sy) < 7) return;
+    if (g) g.moved = true; D.moved = true;
+    if (D.gate) return;
+    const p = toMap70(e), l = D.pts[D.pts.length - 1];
+    if (D.erase) { if (erase711(gmMap70(), D.k, p, Math.max(0.5, D.wd / 2))) paintSoon70(); return; }
+    if (Math.hypot(p.x - l[0], p.y - l[1]) >= Math.min(0.5, Math.max(0.25, D.wd / 4))) { D.pts.push([p.x, p.y]); if (D.pts.length > 900) D.pts = rdp711(D.pts, 0.05); paintSoon70(); }
+    return;
+  }
+  if (D && M70.ptrs.size !== 1) { M711.d = null; paintSoon70(); }
+  return _move711.apply(this, arguments);
+};
+const _up711 = up70;
+up70 = function (e) {
+  const D = M711.d;
+  if (D && M70.ptrs.has(e.pointerId)) {
+    M70.ptrs.delete(e.pointerId); M70.g = null; M70.drag = null; M711.d = null;
+    const m = gmMap70();
+    try {
+      if (D.gate) gate711(m, { x: D.pts[0][0], y: D.pts[0][1] });
+      else if (!D.erase) {
+        if (!D.moved && !LN711[D.k].fence && D.wd < 4) toast('Ведите пальцем по карте: линия рисуется следом. Касание ставит пятно только у широкой воды и озера.', 'info');
+        commit711(m, D);
+      }
+    } catch (er) { /* линия не должна ронять карту */ }
+    gmSave(); paint70(); return;
+  }
+  return _up711.apply(this, arguments);
+};
+
+/* ---------- палитра: раздел «〰 Линии» ---------- */
+const _keys711 = palKeys75;
+palKeys75 = function () {
+  if (M75.qOn) { const q = low75(M75.q).trim(), r = _keys711(); return q ? r.concat(KEYS711.filter(k => low75(LN711[k].n).indexOf(q) >= 0)).slice(0, 60) : r; }
+  return M75.cat === 'ln711' ? KEYS711 : _keys711();
+};
+const _btn711 = palBtn75;
+palBtn75 = function (k) {
+  const L = LN711[k]; if (!L) return _btn711(k);
+  return `<button type="button" class="m70pal m711-pal ${M70.arm === k ? 'on' : ''}" data-m="arm" data-v="${k}"><img src="${IMG75(L.ic)}" alt="" loading="lazy" decoding="async" draggable="false"><small>${esc(L.n)}</small></button>`;
+};
+const _bar711 = palBar75;
+palBar75 = function () {
+  let h = _bar711();
+  const chip = chip75('cat75', 'ln711', '〰 Линии', !M75.qOn && M75.cat === 'ln711');
+  h = /data-v="surf">[^<]*<\/button>/.test(h) ? h.replace(/(data-v="surf">[^<]*<\/button>)/, '$1' + chip) : h.replace(/(data-v="brush">[^<]*<\/button>)/, '$1' + chip);
+  const L = M70.arm && LN711[M70.arm];
+  if (L) {
+    const k = M70.arm, cur = wd711(k);
+    const tools = `<div class="m70-scroll m711-tools">${L.wds ? L.wds.map(([w, n]) => chip75('wd711', w, `${n} ${num1(w)} м`, !M711.erase && Math.abs(cur - w) < 0.01)).join('') : ''}`
+      + `${chip75('er711', 0, '🖌 Рисовать', !M711.erase && !M711.gate)}${L.fence ? chip75('gt711', 1, '🚪 Ворота', M711.gate) : ''}${chip75('er711', 1, '🧽 Стереть', M711.erase)}`
+      + `${L.fam === 'water' ? chip75('sw711', '', simple711() ? '◻ Простая вода' : '🌊 Живая вода', false) : ''}${chip75('clr711', k, 'Убрать все: ' + esc(L.n.toLowerCase()), false)}</div>`;
+    const hint = M711.erase ? 'Ведите пальцем — линии этого вида под пальцем стираются и рвутся.'
+      : M711.gate && L.fence ? 'Коснитесь забора или стены — встанет проход. Коснитесь прохода ещё раз — закроется.'
+      : L.fence ? `«${esc(L.n)}»: ведите пальцем, линия выпрямится в пролёты, секции встанут сами. Конец у начала — замкнёт ограду.`
+      : L.fam === 'water' ? 'Ведите пальцем: реки и ручьи сливаются сами, у берега пена, к середине глубже. «Озеро» — широкая кисть, закрашивайте пятно. Начните с края воды — приток прилипнет.'
+      : `«${esc(L.n)}»: ведите пальцем; развилки и перекрёстки соединяются сами, начните с края дороги.`;
+    h = h.replace(/<p class="m70-hint">[\s\S]*?<\/p>/, `${tools}<p class="m70-hint">${hint}${L.dif && !M711.erase ? ' Трудная местность, вода.' : ''}</p>`);
+  }
+  return h;
+};
+const _props711 = props75;
+props75 = function (A) { return A && A.ln711 ? '' : _props711(A); };
+const _act711 = act70;
+act70 = function (cmd, b) {
+  const v = b && b.dataset ? b.dataset.v : '';
+  switch (cmd) {
+    case 'wd711': if (M70.arm && LN711[M70.arm]) M711.wd[M70.arm] = +v || LN711[M70.arm].wd; M711.erase = false; M711.gate = false; paint70(); return;
+    case 'er711': M711.erase = v === '1'; M711.gate = false; paint70(); return;
+    case 'gt711': M711.gate = !M711.gate; M711.erase = false; paint70(); return;
+    case 'sw711': lsSet(SIMPLE711_KEY, !simple711()); M711.cache.clear(); paint70(); return;
+    case 'clr711': {
+      const m = gmMap70(), n = m.items.length, fam = LN711[v] && (LN711[v].fam || v);
+      m.items.splice(0, n, ...m.items.filter(i => !(isLn711(i) && (LN711[i.k].fam || i.k) === fam)));
+      if (m.items.length !== n) { gmSave(); toast('Убрано.', 'info'); } paint70(); return;
+    }
+    case 'arm': if (v && v !== M70.arm && LN711[v]) { M711.erase = false; M711.gate = false; } break;
+    case 'mode': M711.d = null; break;
+  }
+  return _act711(cmd, b);
+};
+/* настройки карты мастера: простая вода на этом устройстве */
+const _menu711 = gmMenuHtml70;
+gmMenuHtml70 = function () {
+  const h = _menu711.apply(this, arguments);
+  const row = `<button type="button" class="switch-row" data-m="sw711m"><span>Простая вода<small class="muted"> без анимации, для слабого телефона (на этом устройстве)</small></span><i class="switch ${simple711() ? 'on' : ''}"></i></button>`;
+  return h.replace(/(<p class="sheet-sec">Размер поля<\/p>)/, row + '$1');
+};
+const _act711m = act70;
+act70 = function (cmd, b) {
+  if (cmd === 'sw711m') { lsSet(SIMPLE711_KEY, !simple711()); M711.cache.clear(); refreshModal(); paint70(); return; }
+  return _act711m(cmd, b);
+};
+(function () {
+  const st = document.createElement('style');
+  st.textContent = '.m711-flow{animation:m711f 3.2s linear infinite}.m711-foam{animation:m711f 9s linear infinite}@keyframes m711f{to{stroke-dashoffset:-4.2}}'
+    + '@media (prefers-reduced-motion:reduce){.m711-flow,.m711-foam{animation:none}}.m711-pal img{object-fit:contain}';
+  document.head.appendChild(st);
+})();
+/* панель сменила высоту (выбрали инструмент) — вид подстраиваем сразу, а не на первом движении пальца,
+   иначе первая линия после выбора кисти съезжала от пальца */
+const _paint711 = paint70;
+paint70 = function () {
+  const r = _paint711.apply(this, arguments);
+  try { const st = $('m70-stage'), v = M70.view; if (M70.open && v && st && (v.W !== st.clientWidth || v.H !== st.clientHeight)) _paint711.apply(this, arguments); } catch (e) { /* без подстройки */ }
+  return r;
+};
+/* =====================================================================
+   ВЫПУСК 7.11: ПОКРЫТИЯ БЕЗ ПОВТОРА (просьба Андрея)
+   Каждый мазок кисти покрытий получает свой поворот и масштаб узора и чуть другой размер пятна, так что
+   соседние мазки не повторяют друг друга. Случайность от id мазка: у мастера и игроков одинаково, при
+   перерисовке не дрожит. Что уместно: доски — без поворота (только развернуть на 180°), но разной длины
+   (узор тянется вдоль доски); плитка и плиты — поворот на 90° без масштаба (швы остаются в сетке);
+   ковёр — без изменений; порода, земля, листья, песок, булыжник, вода — любой поворот и масштаб.
+   Мазки одного вида и одного варианта — одна маска (вариантов не больше 12 на покрытие).
+   ===================================================================== */
+const MIX711 = {
+  'oak-planks': { rot: [0, 180], ax: 'x', sc: [0.75, 1, 1.3] },
+  'rough-deck': { rot: [0, 180], ax: 'y', sc: [0.75, 1, 1.3] },
+  'wood-deck': { rot: [0, 180], ax: 'y', sc: [0.75, 1, 1.3] },
+  'worn-carpet': { rot: [0], sc: [1] }
+};
+const GRID711 = /^(kitchen-tile|cobble-tile|dungeon-slabs|tile-(cracked|mossy|bloody|mud|bones|flooded|ice|stone))$/;
+function mixOf711(id) {
+  if (MIX711[id]) return MIX711[id];
+  if (GRID711.test(id)) return { rot: [0, 90, 180, 270], sc: [1] };
+  return { rot: [0, 60, 120, 180, 240, 300], sc: [0.85, 1.18] };
+}
+layer78 = function (V) {
+  const by = new Map();
+  V.items.forEach(i => { const A = MAP_ASSETS70[i.k]; if (A && A.surf && !i.hid) { if (!by.has(i.k)) by.set(i.k, []); by.get(i.k).push(i); } });
+  if (!by.size) return '';
+  const grads = new Map(); let s = '', r = '';
+  by.forEach((L, k) => {
+    const A = MAP_ASSETS70[k], g = grad78(A.f || 0.55), id = A.surf, X = mixOf711(id), groups = new Map();
+    grads.set(g.id, g.d);
+    L.forEach(i => {
+      const h = hash711(i.id), v = (h % X.rot.length) * X.sc.length + ((h >>> 8) % X.sc.length);
+      if (!groups.has(v)) groups.set(v, []); groups.get(v).push(i);
+    });
+    groups.forEach((G, v) => {
+      const a = X.rot[Math.floor(v / X.sc.length)], sc = X.sc[v % X.sc.length], pid = `m78p-${id}-${v}`;
+      const tf = `rotate(${a})${sc !== 1 ? X.ax === 'x' ? ` scale(${sc} 1)` : X.ax === 'y' ? ` scale(1 ${sc})` : ` scale(${sc})` : ''}`;
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      const circ = G.map(i => {
+        const j = 0.88 + ((hash711(i.id + 'r') % 100) / 100) * 0.24, rr = r2_70(i.w / 2 * j);
+        x0 = Math.min(x0, i.x - rr); y0 = Math.min(y0, i.y - rr); x1 = Math.max(x1, i.x + rr); y1 = Math.max(y1, i.y + rr);
+        return `<circle cx="${i.x}" cy="${i.y}" r="${rr}" fill="url(#${g.id})"/>`;
+      }).join('');
+      const bx = `x="${r2_70(x0)}" y="${r2_70(y0)}" width="${r2_70(x1 - x0)}" height="${r2_70(y1 - y0)}"`;
+      s += `<pattern id="${pid}" width="${CELL70}" height="${CELL70}" patternUnits="userSpaceOnUse" patternTransform="${tf}"><image href="${A.timg}" width="${CELL70}" height="${CELL70}" preserveAspectRatio="none"/></pattern>`
+        + `<mask id="m78m-${id}-${v}" maskUnits="userSpaceOnUse" ${bx}>${circ}</mask>`;
+      r += `<rect ${bx} fill="url(#${pid})" mask="url(#m78m-${id}-${v})" pointer-events="none"/>`;
+    });
+  });
+  return `<g class="m78-surf"><defs>${[...grads.values()].join('')}${s}</defs>${r}</g>`;
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
