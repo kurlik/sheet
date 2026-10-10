@@ -4338,7 +4338,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.19.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.19.1';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -16703,6 +16703,10 @@ plView70 = function () {
     }
     return true;
   });
+  V.fog73 = null;   // 7.19.1: туман считает plFog73 в самой внешней обёртке (m70), когда к виду уже добавлены комнаты и линии
+  return V;
+};
+function plFog73(V) {
   V.fog73 = null;
   if (fogOn73(V)) {
     const C = ctx73(V), vw = viewers73(V).map(t => ({ key: t.key, x: t.x, y: t.y, dv: t.dv || 0 }));
@@ -24612,6 +24616,167 @@ AMB_EV77.thunder = A => {
   s.buffer = thunderBuf719(c, i); g.gain.value = i === 0 ? 0.55 : 0.32 + Math.random() * 0.15;
   s.connect(g); g.connect(A.out); s.start(c.currentTime + 0.05); A.src.push(s);
   s.onended = () => { const k = A.src.indexOf(s); if (k >= 0) A.src.splice(k, 1); };
+};
+/* =====================================================================
+   ВЫПУСК 7.19.1: ТРИ ПОЧИНКИ С ИГРЫ
+   1) Дверь (и окно) в «Стене», стене-кисти «Стена подземелья», «Каменной кладке» не прорезала стену под собой:
+      открытая дверь не мешает, но стена под ней — да. Мастер тащит без столкновений, поэтому у него проходило,
+      а игроки упирались. Теперь стена под дверью/окном вырезается на ширину двери: для движения, укрытия и взгляда
+      (закрытая дверь по-прежнему держит сама). У комнат 7.9 так было и раньше (underDoor79).
+   2) Игрок зашёл ещё раз с другого браузера/телефона (или установленное приложение вместо Safari — у них разное
+      хранилище) и получил новый uid: в «Партии» два одинаковых персонажа, один «не в сети». Мастер склеивает:
+      тот же персонаж по имени, старый не в сети, новый на связи → старый прячется, его фишка, инициатива и место
+      в очереди боя переходят новому. Игрокам и экрану на столе список прячущихся уходит в public/map.dp719.
+      Если старый снова выйдет на связь — появится снова (значит, это был другой человек).
+   3) Туман войны у игрока и на экране стола считался ДО того, как к виду добавлялись комнаты 7.9 и линии 7.11:
+      стены комнат взгляд не закрывали, зато всё, что закрывает обзор (стена-предмет, ствол дерева, шкаф),
+      рисовалось чёрной кляксой — его «тело» само оказывалось в своей тени. Теперь туман считается в самой внешней
+      обёртке plView70 (plFog73 из m37), а увиденные преграды показываются целиком (если видна хоть одна их грань).
+   ===================================================================== */
+
+/* ---------- 1. стена под дверью и окном ---------- */
+const hole719 = i => { const A = MAP_ASSETS70[i.k]; return !!(A && (A.door || A.win) && !i.hid && !((i.r || 0) % 90)); };
+const wallish719 = i => { const A = MAP_ASSETS70[i.k]; return !!(A && !A.door && !A.win && !i.hid && !((i.r || 0) % 90) && (A.block || A.vs)); };
+function carve719(items, holes) {
+  if (!holes.length) return items;
+  let out = null;
+  items.forEach((i, n) => {
+    let parts = null;
+    if (wallish719(i)) {
+      const b = itemBox70(i), p0 = { x0: i.x - b.hw, x1: i.x + b.hw, y0: i.y - b.hh, y1: i.y + b.hh };
+      let ps = [p0];
+      holes.forEach(h => {
+        const hb = itemBox70(Object.assign({}, h, { k: '' })), along = hb.hw >= hb.hh;   // дверь вдоль x или вдоль y
+        ps = ps.flatMap(p => {
+          const thin = along ? p.y1 - p.y0 : p.x1 - p.x0, c = along ? h.y : h.x, lo = along ? p.y0 : p.x0, hi = along ? p.y1 : p.x1;
+          if (thin > 0.65 || c < lo - 0.05 || c > hi + 0.05) return [p];   // не на линии двери или не стена (толще 0,65 м: бочку в проёме не режем)
+          const a = (along ? h.x - hb.hw : h.y - hb.hh), z = (along ? h.x + hb.hw : h.y + hb.hh), s0 = along ? p.x0 : p.y0, s1 = along ? p.x1 : p.y1;
+          if (z <= s0 + 0.01 || a >= s1 - 0.01) return [p];
+          const A = along ? Object.assign({}, p, { x1: Math.min(p.x1, a) }) : Object.assign({}, p, { y1: Math.min(p.y1, a) });
+          const B = along ? Object.assign({}, p, { x0: Math.max(p.x0, z) }) : Object.assign({}, p, { y0: Math.max(p.y0, z) });
+          return [A, B].filter(q => q.x1 - q.x0 > 0.02 && q.y1 - q.y0 > 0.02);
+        });
+      });
+      if (ps.length !== 1 || ps[0] !== p0) parts = ps;
+    }
+    if (!parts) { if (out) out.push(i); return; }
+    if (!out) out = items.slice(0, n);
+    const f = (MAP_ASSETS70[i.k] || {}).hit || 1;
+    parts.forEach((p, j) => out.push(Object.assign({}, i, { id: i.id + '~' + j, x: r2_70((p.x0 + p.x1) / 2), y: r2_70((p.y0 + p.y1) / 2), w: (p.x1 - p.x0) / f, h: (p.y1 - p.y0) / f, r: 0 })));
+  });
+  return out || items;
+}
+/* pen70 зовут сотни раз за кадр перетаскивания: результат держим 60 мс на тот же массив */
+const C719 = { arr: null, res: null, t: 0, g: null, gl: null, gk: '' };
+function carveV719(V) {
+  if (!V || !Array.isArray(V.items)) return V;
+  const now = Date.now();
+  if (C719.arr !== V.items || now - C719.t > 60) { const h = V.items.filter(hole719); C719.arr = V.items; C719.res = h.length ? carve719(V.items, h) : V.items; C719.t = now; }
+  return C719.res === V.items ? V : Object.assign({}, V, { items: C719.res });
+}
+const _geo719 = geo78;
+geo78 = function (V) {
+  const L = _geo719.apply(this, arguments); if (!L || !L.length) return L;
+  const h = (V.items || []).filter(hole719); if (!h.length) return L;
+  const k = h.map(i => [i.x, i.y, i.w, i.h, i.r || 0].join(',')).join(';');
+  if (C719.gl !== L || C719.gk !== k) { C719.gl = L; C719.gk = k; C719.g = carve719(L, h); }
+  return C719.g;
+};
+const _pen719 = pen70;
+pen70 = function (V, D, c) { return _pen719(carveV719(V), D, c); };
+if (typeof cover72 === 'function') { const _cov719 = cover72; cover72 = function (V) { return _cov719.apply(this, [carveV719(V)].concat([].slice.call(arguments, 1))); }; }
+if (typeof occ73 === 'function') { const _occ719 = occ73; occ73 = function (V) { return _occ719(carveV719(V)); }; }
+
+/* ---------- 2. двойник игрока после повторного входа ---------- */
+const nm719 = p => String((p && p.sheet && p.sheet.name) || '').trim().toLowerCase();
+function dupMap719() {
+  const code = gm.session && gm.session.code;
+  if (!gm.dup719 || gm.dup719.code !== code) gm.dup719 = { code, m: {} };
+  return gm.dup719.m;
+}
+function moveKey719(o, a, b) { if (o && o[a] !== undefined) { if (o[b] === undefined) o[b] = o[a]; delete o[a]; return true; } return false; }
+function migrate719(a, b) {
+  const ka = 'p:' + a, kb = 'p:' + b, m = gmMap70();
+  let ch = moveKey719(m.tk, ka, kb);
+  if (gm.inits) ch = moveKey719(gm.inits, ka, kb) || ch;
+  const c = gm.combat;
+  if (c && Array.isArray(c.order) && c.order.includes(ka)) {
+    const i = c.order.indexOf(ka);
+    if (c.order.includes(kb)) { c.order.splice(i, 1); if (c.turn > i) c.turn--; if (c.turn >= c.order.length) c.turn = 0; }
+    else c.order[i] = kb;
+    ch = true;
+  }
+  return ch;
+}
+function dedup719() {
+  if (!gm.session || gm.session.demo || !Array.isArray(gm.players)) return;
+  const D = dupMap719(), by = {};
+  let ch = false;
+  gm.players.forEach(p => { if (D[p.id] && p.online) { delete D[p.id]; ch = true; } });   // старый снова на связи: это другой человек
+  gm.players.forEach(p => { const n = nm719(p); if (n) (by[n] = by[n] || []).push(p); });
+  Object.values(by).forEach(G => {
+    if (G.length < 2) return;
+    const on = G.filter(p => p.online); if (on.length !== 1) return;
+    const keep = on[0];
+    G.forEach(p => { if (p === keep || p.online) return; if (D[p.id] !== keep.id) { D[p.id] = keep.id; ch = true; } if (migrate719(p.id, keep.id)) ch = true; });
+  });
+  Object.keys(D).forEach(a => { const b = D[a]; if (D[b]) D[a] = D[b]; });   // цепочка: старый → новый → новейший
+  gm.players = gm.players.filter(p => !D[p.id]);
+  if (ch) { persistGm(); publishMap70(); }
+}
+const _relay719 = gmRelay;
+gmRelay = function () { try { dedup719(); } catch (e) { /* не мешаем синхронизации */ } return _relay719.apply(this, arguments); };
+const _pub719 = pubData70;
+pubData70 = function () {
+  const d = _pub719.apply(this, arguments);
+  const D = gm.dup719 && gm.session && gm.dup719.code === gm.session.code ? Object.keys(gm.dup719.m) : [];
+  if (d && D.length) d.dp719 = D;
+  return d;
+};
+/* игрок и экран на столе: спрятанные двойники */
+function dupSet719() {
+  if (appRole() === 'gm') return new Set(gm.dup719 && gm.session && gm.dup719.code === gm.session.code ? Object.keys(gm.dup719.m) : []);
+  const pm = typeof plPub70 === 'function' ? plPub70() : null;
+  return new Set(pm && Array.isArray(pm.dp719) ? pm.dp719.map(String) : []);
+}
+const _chSrc719 = chSrc;
+chSrc = function () {
+  const r = _chSrc719.apply(this, arguments);
+  if (r && !r.demo && Array.isArray(r.people)) { const S = dupSet719(); if (S.size) r.people = r.people.filter(p => !S.has(p.id) || p.id === r.me); }
+  return r;
+};
+if (typeof tbPeople76 === 'function') { const _tbp719 = tbPeople76; tbPeople76 = function () { const S = dupSet719(); return _tbp719.apply(this, arguments).filter(p => !S.has(p.id)); }; }
+
+/* ---------- 3. туман игрока: в самой внешней обёртке, плюс увиденные преграды целиком ---------- */
+const _plView719 = plView70;
+plView70 = function () {
+  const V = _plView719.apply(this, arguments); if (!V) return V;
+  const S = dupSet719(), me = myPid();
+  if (S.size) V.toks = V.toks.filter(t => !(t.key[0] === 'p' && S.has(t.key.slice(2)) && t.key.slice(2) !== String(me)));
+  try { plFog73(V); } catch (e) { V.fog73 = null; }
+  return V;
+};
+function bodySeen719(C, vw, b) {
+  const cx = b.x, cy = b.y, pts = [];
+  b.cs.forEach((p, k) => {
+    const q = b.cs[(k + 1) & 3], mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
+    [[p[0], p[1]], [mx, my]].forEach(([x, y]) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; pts.push([x + dx / l * 0.08, y + dy / l * 0.08]); });
+  });
+  return vw.some(v => pts.some(p => seePt73(C, v, p[0], p[1])));
+}
+const B719 = { g: null, k: '', polys: '' };
+const _fog719 = fogSvg73;
+fogSvg73 = function (V, mode) {
+  const s = _fog719.apply(this, arguments);
+  const F = V && V.fog73; if (mode === 'dark' || !s || !F || !F.vw || !F.vw.length) return s;
+  const C = F.C, key = F.vw.map(v => `${r2_70(v.x)},${r2_70(v.y)},${v.dv || 0}`).join(';') + '|' + C.amb + '|' + C.cap + '|' + C.lights.length;
+  if (B719.g !== C.g || B719.k !== key) {
+    B719.g = C.g; B719.k = key;
+    B719.polys = C.g.boxes.filter(b => Math.max(b.x1 - b.x0, b.y1 - b.y0) <= 3.1 && bodySeen719(C, F.vw, b))
+      .map(b => `<polygon points="${b.cs.map(p => r2_70(p[0]) + ',' + r2_70(p[1])).join(' ')}"/>`).join('');
+  }
+  if (!B719.polys) return s;
+  return s.replace('<defs>', `<defs><clipPath id="m719b">${B719.polys}</clipPath>`).replace('</mask>', '<g clip-path="url(#m719b)"><use href="#m73in"/></g></mask>');
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
