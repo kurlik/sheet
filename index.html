@@ -4338,7 +4338,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.18.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.19.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -24291,6 +24291,327 @@ walls79 = function (V) {
     return `<defs>${pat}</defs>` + (S.h ? `<path d="${S.h}" fill="none" stroke="url(#m718w-h)" stroke-width="${w}"${cap}/>` : '')
       + (S.v ? `<path d="${S.v}" fill="none" stroke="url(#m718w-v)" stroke-width="${w}"${cap}/>` : '');
   }).replace(/<path d="[^"]*" fill="none" stroke="#7d8494"[^>]*\/>/, '');
+};
+/* =====================================================================
+   ВЫПУСК 7.19: «ТЕЛЕФОН НЕ ГРЕЕТСЯ»
+   Замер (Chromium, карта в бою, ничего не трогаем): 60 перерисовок экрана в секунду без остановки.
+   Причины — бесконечные CSS-анимации, которые браузер не умеет отдать видеокарте:
+   1) внутри SVG карты (пульс фишки текущего хода, течение воды и пена, свечение лавы, огонь, туман,
+      шаблон области, горящий предмет): любое мигание внутри SVG = перерисовка ВСЕЙ карты со всеми
+      текстурами, 60 раз в секунду, всё время боя;
+   2) плашка «Бой идёт / Ваш ход» под картой: мигала тенью (box-shadow) — тоже перерисовка каждый кадр,
+      хотя под картой её даже не видно.
+   Что сделано:
+   - «Живая карта» (вода течёт, огонь и туман дышат, пульс хода) — выключатель в «Анимации на карте».
+     На телефонах и планшетах по умолчанию выключена: карта та же, только неподвижная. На компьютере включена.
+   - Пока открыта карта, всё под ней (лист, пульт мастера, нижняя панель) не рисуется и не анимируется.
+   - Плашка боя мигает слоем-ореолом (прозрачность — её считает видеокарта), вид прежний.
+   ===================================================================== */
+const COARSE719 = !!(window.matchMedia && matchMedia('(pointer:coarse)').matches);
+function live719() { return settings.mapLive === true || (settings.mapLive == null && !COARSE719); }
+const _applySettings719 = applySettings;
+applySettings = function () { _applySettings719(); document.body.classList.toggle('m719-still', !live719()); };
+applySettings();
+
+const _mapFxRow719 = mapFxRowHtml71;
+mapFxRowHtml71 = function () { return _mapFxRow719().replace('Шаги, удары, выстрелы, броски, гибель.', `Шаги, удары, выстрелы, броски, гибель. Живая вода и огонь: ${live719() ? 'да' : 'нет'}.`); };
+const _mapFxHtml719 = mapFxHtml71;
+mapFxHtml71 = function () {
+  const row = `<div role="button" tabindex="0" class="option set-row" data-act="mlive719"><span><b>Живая карта</b><span>Вода течёт, огонь и туман дышат, фишка хода мерцает. Красиво, но телефон греется и садится быстрее: карта перерисовывается целиком 60 раз в секунду. Выключено — та же карта, только неподвижная.</span></span><i class="switch ${live719() ? 'on' : ''}"></i></div>`;
+  return _mapFxHtml719().replace('<p class="muted">Настройка живёт', row + '<p class="muted">Настройка живёт');
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest && e.target.closest('[data-act="mlive719"]'); if (!el) return;
+  settings.mapLive = !live719(); saveSettings(); refreshModal();
+});
+
+(function () {
+  const st = document.createElement('style');
+  st.textContent =
+    /* неподвижная карта: те же слои, без бесконечных анимаций; туман и огонь — в середине своего «дыхания» */
+    'body.m719-still #m70-svg *,body.m719-still #m74-bg *{animation:none!important}'
+    + 'body.m719-still #m70-svg .m717-fog{opacity:.28}body.m719-still #m70-svg .m717-fl{opacity:.8}'
+    /* под открытой картой ничего не рисуем и не анимируем (карта непрозрачная и во весь экран) */
+    + 'body.map70-on:not(.tv76) #pages,body.map70-on:not(.tv76) #gm,body.map70-on:not(.tv76) #nav,body.map70-on:not(.tv76) #gm-dock{visibility:hidden}'
+    + 'body.map70-on #pages *,body.map70-on #gm *,body.map70-on #nav *,body.map70-on #gm-dock *{animation-play-state:paused!important}'
+    /* плашка боя: мигает ореол-слой прозрачностью, а не тень самой плашки */
+    + '@media (prefers-reduced-motion:no-preference){body:not(.no-anim) .battle-plaque,body:not(.no-anim) .battle-plaque.mine{animation:none}'
+    + 'body:not(.no-anim) .battle-plaque::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;'
+    + 'box-shadow:0 0 22px rgba(240,90,50,.7);animation:bp719 2.4s ease-in-out infinite;will-change:opacity}'
+    + 'body:not(.no-anim) .battle-plaque.mine::after{box-shadow:0 0 22px rgba(80,225,235,.7)}}'
+    + '@keyframes bp719{50%{opacity:1}}';
+  document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.19: РЕШЕНИЯ БОЯ ПРЯМО НА КАРТЕ
+   Раньше «Попал / Промах», «Урон N», ход монстра (чем бьёт, по кому, бросок, «Нанести урон») жили только
+   в нижней панели вкладки «Бой» — под картой их не видно, мастеру приходилось закрывать карту.
+   Теперь у мастера на карте та же панель плашкой над нижней строкой: тот же HTML (dockHtml65 по частям),
+   те же кнопки и обработчики, поэтому решение на карте и во вкладке — одно и то же действие.
+   Плашку можно свернуть до строки (тап по заголовку); новое решение разворачивает её снова.
+   Игрок: если ждёт ввод урона (попал, кубики бросает сам), на карте строка-напоминание; тап открывает
+   шторку «Действия», где уже стоит поле ввода. Игроку не показываем ничего сверх его собственного листа.
+   ===================================================================== */
+const D719 = { min: false, n: 0 };
+function gmDockOn719() {
+  if (appRole() !== 'gm' || !M70.open || !M70.V || !M70.V.gmv || M70.mode === 'edit' || !gm.combat) return '';
+  const P = pendingCards65();
+  if (P.length) return 'p';
+  const key = curKey65();
+  if (gm.combat.active && key[0] === 'e' && !act65Modal) { const e = enemyById(key.slice(2)); if (e && e.hp > 0) return 'e'; }
+  return '';
+}
+function gmDockHtml719(kind) {
+  const P = pendingCards65(), n = pending65();
+  if (n > D719.n) D719.min = false;
+  D719.n = n;
+  let head, body;
+  painting65 = true;
+  try {
+    if (kind === 'p') {
+      head = `<b>Ждёт решения</b>${P.length > 1 ? ` · ещё ${P.length - 1}` : ''}`;
+      body = cardHtml65(P[0], true);
+    } else {
+      const id = curKey65().slice(2), e = enemyById(id);
+      head = `Ход: <b>${esc(e ? foeName(e) : '?')}</b>`;
+      body = enemyDockHtml65(id);
+    }
+  } finally { painting65 = false; }
+  return `<div class="dock-head" data-act="m719-min"><span>${head}</span><span class="dock-tog">${D719.min ? 'развернуть ▴' : 'свернуть ▾'}</span></div>`
+    + (D719.min ? '' : `<div class="dock-body">${body}</div>`);
+}
+function plDockHtml719() {
+  if (appRole() !== 'player' || !M70.open || !M70.V || M70.V.gmv || (typeof F714 !== 'undefined' && F714.acts)) return '';
+  const L = Object.values(state.dmg67 || {}).filter(P => P && P.hit);
+  if (!L.length) return '';
+  const P = L[0];
+  return `<button type="button" class="m719-pl" data-m="acts714"><b>🎲 Впишите урон</b><span>${esc(P.title)}${P.names ? ' → ' + esc(P.names) : ''}: ${P.crit ? 'крит!' : 'попали!'} Бросьте ${esc(P.dice || 'кубики')}</span></button>`;
+}
+function paint719() {
+  const st = $('m70-stage'); let el = $('m719-dock');
+  const kind = st ? gmDockOn719() : '';
+  const h = !st ? '' : kind ? gmDockHtml719(kind) : plDockHtml719();
+  if (!h) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'm719-dock';
+    ['pointerdown', 'wheel'].forEach(ev => el.addEventListener(ev, x => x.stopPropagation()));
+  }
+  if (el.parentNode !== st) st.appendChild(el);
+  el.className = kind ? 'gm-dock m719-dock' : 'm719-dock pl';
+  if (el.dataset.h !== h) {
+    const ob = el.querySelector('.dock-body'), sc = ob ? ob.scrollTop : 0;
+    el.innerHTML = h; el.dataset.h = h;
+    const nb = el.querySelector('.dock-body'); if (nb) nb.scrollTop = sc;
+  }
+}
+const _paint719 = paint70;
+paint70 = function () { const r = _paint719.apply(this, arguments); try { if (M70.open) paint719(); } catch (e) { /* карта важнее */ } return r; };
+const _paintDock719 = paintDock65;
+paintDock65 = function () { _paintDock719(); try { if (M70.open) paint719(); } catch (e) { /* ignore */ } };
+const _closeMap719 = closeMap70;
+closeMap70 = function () { _closeMap719(); const el = $('m719-dock'); if (el) el.remove(); };
+/* у мастера нижняя панель боя рисуется только во вкладке «Бой»; на карте её решения нужны в любой вкладке */
+const _render719 = render;
+render = function () { const r = _render719.apply(this, arguments); try { if (M70.open && appRole() === 'gm') dockSoon65(); } catch (e) { /* ignore */ } return r; };
+document.addEventListener('click', e => {
+  const el = e.target.closest && e.target.closest('[data-act="m719-min"]'); if (!el) return;
+  D719.min = !D719.min; paint719();
+});
+(function () {
+  const st = document.createElement('style');
+  st.textContent = '.m719-dock{position:absolute;left:6px;right:6px;bottom:6px;top:auto;transform:none;width:auto;max-width:520px;margin:0 auto;z-index:4;'
+    + 'max-height:48%;border-bottom:2px solid #9c7a48;border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.6);font-size:14px;user-select:text;-webkit-user-select:text}'
+    + '.m719-dock .dock-head{padding:6px 12px}.m719-dock .dock-body{padding:4px 10px 8px}.m719-dock .atk-card{margin:0}'
+    + '.m719-dock .pick{gap:4px}.m719-dock .seg-btn{padding:4px 8px;font-size:13px}.m719-dock .btn{min-height:36px;padding:6px 12px;font-size:14px}'
+    + '.m719-dock .sheet-sec{margin:6px 0 3px}.m719-dock .act-res p{margin:4px 0}'
+    + '.m719-dock.pl{display:flex;max-height:none;padding:0;background:none;border:0;box-shadow:none}'
+    + '.m719-pl{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:8px 12px;border-radius:12px;'
+    + 'background:linear-gradient(#0f3a40,#082226);border:1px solid #4fd8e0;color:#bff6f8;box-shadow:0 6px 18px rgba(0,0,0,.6);font:inherit}'
+    + '.m719-pl b{color:#7ff0f5;font-size:14px}.m719-pl span{font-size:12px;color:#a9d9dc}';
+  document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.19: «КАРТА БЕЗ ТОРМОЗОВ» (FPS)
+   1) Перерисовка без пересборки. paint70 каждый раз писал весь SVG заново (svg.innerHTML = …): тянешь фишку,
+      скользит чужая фишка — 60 раз в секунду браузер разбирал 30–60 КБ разметки и перерастрировал всю карту
+      с текстурами. Теперь новая разметка сравнивается со старой по узлам, и меняются только изменившиеся
+      (фишка, линия пути, подсказка). Неизменные узлы — те же объекты, их картинка уже готова.
+      Сделано подменой innerHTML у самого #m70-svg, поэтому все старые места (paint70 и обёртки) не тронуты,
+      а чтение innerHTML (тесты) отдаёт ту же разметку.
+   2) Пан и щипок. Сдвиг шёл через viewBox — каждый кадр перерастрирует карту целиком (три слоя SVG).
+      Теперь во время жеста слои двигаются и масштабируются CSS-трансформацией (её делает видеокарта),
+      а настоящий viewBox ставится, когда палец отпущен, и раз в 0,3 с во время долгого жеста
+      (иначе по краям видна пустота). Во время щипка картинка слегка мыльная — до отпускания.
+   ===================================================================== */
+const F719 = { cv: null, tr: false, tm: 0, nodes: 0 };
+const _ihtml719 = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+function morphKids719(a, b) {
+  const B = Array.from(b.childNodes);
+  let i = 0;
+  for (; i < B.length; i++) {
+    const n = B[i], o = a.childNodes[i];
+    if (!o) { a.appendChild(n); F719.nodes++; continue; }
+    if (o.isEqualNode(n)) continue;
+    if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || o.nodeType !== 1) {
+      if (o.nodeType === 3 && n.nodeType === 3) o.nodeValue = n.nodeValue; else { a.replaceChild(n, o); F719.nodes++; }
+      continue;
+    }
+    // тот же тег: если отличаются только атрибуты — правим их; дети — рекурсивно
+    syncAttrs719(o, n);
+    morphKids719(o, n);
+  }
+  while (a.childNodes.length > B.length) a.removeChild(a.lastChild);
+}
+function syncAttrs719(o, n) {
+  const na = n.attributes, oa = o.attributes;
+  for (let k = oa.length - 1; k >= 0; k--) { const at = oa[k]; if (!n.hasAttributeNS(at.namespaceURI, at.localName)) o.removeAttributeNS(at.namespaceURI, at.localName); }
+  for (let k = 0; k < na.length; k++) { const at = na[k]; if (o.getAttributeNS(at.namespaceURI, at.localName) !== at.value) o.setAttributeNS(at.namespaceURI, at.name, at.value); }
+}
+function morph719(el, html) {
+  if (!el.firstChild || !html) { _ihtml719.set.call(el, html); return; }
+  const t = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  _ihtml719.set.call(t, html);
+  morphKids719(el, t);
+}
+function hookSvg719() {
+  const s = $('m70-svg'); if (!s || s.dataset.m719) return;
+  s.dataset.m719 = '1';
+  Object.defineProperty(s, 'innerHTML', { configurable: true, get() { return _ihtml719.get.call(this); }, set(h) { morph719(this, String(h)); } });
+}
+const _el719 = el70;
+el70 = function () { const o = _el719.apply(this, arguments); hookSvg719(); return o; };
+
+/* ---------- пан и щипок трансформацией ---------- */
+function layers719() { const st = $('m70-stage'); return st ? Array.from(st.children).filter(e => e.tagName && e.tagName.toLowerCase() === 'svg') : []; }
+function gesture719() { return !!M70.open && ((M70.pinch && M70.ptrs.size >= 2) || (M70.g && M70.g.moved && !M70.drag)); }
+function clearTr719() {
+  if (!F719.tr) return;
+  layers719().forEach(e => { e.style.transform = ''; e.style.willChange = ''; });
+  F719.tr = false;
+}
+const _apply719 = applyView70;
+applyView70 = function () {
+  const v = M70.view, c = F719.cv;
+  if (v && c && gesture719()) {
+    const k = v.s / c.s, tx = (c.x - v.x) * v.s, ty = (c.y - v.y) * v.s, W = v.W || 360, H = v.H || 500;
+    // ушли далеко или жест долгий — честно перерисовать (иначе по краям пусто)
+    if (Math.abs(tx) < W * 0.35 && Math.abs(ty) < H * 0.35 && k > 0.7 && k < 1.45) {
+      const tf = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${k.toFixed(4)})`;
+      layers719().forEach(e => { e.style.transformOrigin = '0 0'; e.style.willChange = 'transform'; e.style.transform = tf; });
+      F719.tr = true;
+      if (!F719.tm) F719.tm = setTimeout(() => { F719.tm = 0; if (F719.tr) applyView70.real(); }, 300);
+      return;
+    }
+  }
+  applyView70.real();
+};
+applyView70.real = function () {
+  if (F719.tm) { clearTimeout(F719.tm); F719.tm = 0; }
+  _apply719();
+  const v = M70.view; F719.cv = v ? { x: v.x, y: v.y, s: v.s } : null;
+  // снять трансформацию в том же кадре, что и новый viewBox — без мигания
+  layers719().forEach(e => { if (e.style.transform) e.style.transform = ''; if (e.style.willChange) e.style.willChange = ''; });
+  F719.tr = false;
+};
+['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, () => setTimeout(() => { if (F719.tr && !gesture719()) applyView70.real(); }, 0)));
+const _close719f = closeMap70;
+closeMap70 = function () { clearTr719(); F719.cv = null; return _close719f.apply(this, arguments); };
+/* =====================================================================
+   ВЫПУСК 7.19: ДОЖДЬ, А НЕ БЕЛЫЙ ШУМ
+   Было: «дождь» = белый шум через широкий полосовой фильтр 3 кГц (шипение) + низкий гул.
+   Стало: один раз считаем 6-секундную стерео-петлю дождя (Float32Array, ~10 мс работы) и крутим её
+   одним источником — телефону это почти ничего не стоит, в отличие от фильтров в реальном времени.
+   Из чего петля: мягкая «масса» дождя (шум 150–1400 Гц, без верхнего шипения), тихий верх с медленными
+   порывами, сотни отдельных капель (короткий щелчок шума, у части — «плюх» по луже, тон вверх),
+   в левом и правом канале капли разные — дождь вокруг. Шов петли сглажен перекрёстным затуханием.
+   Гроза — та же петля гуще и громче, гром как раньше.
+   ===================================================================== */
+const RAIN719 = {};
+function rainBuf719(c, heavy) {
+  const k = heavy ? 'h' : 'r'; if (RAIN719[k] && RAIN719[k].sampleRate === c.sampleRate) return RAIN719[k];
+  const sr = c.sampleRate, L = Math.floor(sr * 6), X = Math.floor(sr * 0.4), N = L + X;
+  const buf = c.createBuffer(2, L, sr), a1 = 2 * Math.PI * 1400 / sr, a2 = 2 * Math.PI * 150 / sr, a3 = 2 * Math.PI * 5000 / sr;
+  for (let ch = 0; ch < 2; ch++) {
+    const d = new Float32Array(N);
+    let l1 = 0, l2 = 0, l3 = 0;
+    for (let i = 0; i < N; i++) {
+      const w = Math.random() * 2 - 1;
+      l1 += a1 * (w - l1); l2 += a2 * (l1 - l2); l3 += a3 * (w - l3);
+      const gust = 0.75 + 0.25 * Math.sin(i / sr * 2 * Math.PI * 0.11 + ch * 1.7) * Math.sin(i / sr * 2 * Math.PI * 0.037);
+      d[i] = (l1 - l2) * (heavy ? 0.55 : 0.42) * gust + (l3 - l1) * 0.035 * gust;
+    }
+    const drops = Math.floor((heavy ? 70 : 38) * N / sr);
+    for (let j = 0; j < drops; j++) {
+      const at = Math.floor(Math.random() * (N - sr * 0.08)), amp = Math.pow(Math.random(), 2.2) * (heavy ? 0.32 : 0.26) + 0.015;
+      const tau = sr * (0.0015 + Math.random() * 0.004), len = Math.floor(tau * 6);
+      let p = 0;
+      for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; p += 0.45 * (w - p); d[at + i] += p * amp * Math.exp(-i / tau); }
+      if (Math.random() < 0.18) {   // капля в лужу: короткий тон вверх
+        const f0 = 900 + Math.random() * 1400, f1 = f0 * (1.6 + Math.random() * 0.6), plen = Math.floor(sr * 0.045), pt = sr * 0.012;
+        let ph = 0;
+        for (let i = 0; i < plen; i++) { const f = f0 + (f1 - f0) * i / plen; ph += 2 * Math.PI * f / sr; d[at + i] += Math.sin(ph) * amp * 0.45 * Math.exp(-i / pt) * Math.min(1, i / (sr * 0.002)); }
+      }
+    }
+    // шов: хвост за длиной петли вплетаем в начало
+    const o = buf.getChannelData(ch);
+    for (let i = 0; i < L; i++) o[i] = d[i];
+    for (let i = 0; i < X; i++) { const t = i / X; o[i] = d[i] * t + d[L + i] * (1 - t); }
+    let pk = 0; for (let i = 0; i < L; i++) pk = Math.max(pk, Math.abs(o[i]));
+    const g = pk > 0 ? 0.8 / pk : 1; for (let i = 0; i < L; i++) o[i] *= g;
+  }
+  RAIN719[k] = buf;
+  return buf;
+}
+AMB77.rain = { beds: [], ev: [], rain719: { heavy: false, vol: 0.32 } };
+AMB77.storm = { beds: [], ev: AMB77.storm.ev, rain719: { heavy: true, vol: 0.42 } };
+const _ambStart719 = ambStart77;
+ambStart77 = function (want) {
+  const A = _ambStart719.apply(this, arguments); if (!A) return A;
+  want.split('+').forEach(k => {
+    const R = AMB77[k] && AMB77[k].rain719; if (!R) return;
+    try {
+      const c = A.c, s = c.createBufferSource(), g = c.createGain(), lp = c.createBiquadFilter();
+      s.buffer = rainBuf719(c, R.heavy); s.loop = true;
+      lp.type = 'lowpass'; lp.frequency.value = 6500; g.gain.value = R.vol;
+      s.connect(lp); lp.connect(g); g.connect(A.out); s.start(0, Math.random() * 5); A.src.push(s);
+    } catch (e) { /* без дождя — не беда */ }
+  });
+  return A;
+};
+
+/* гром: был шумовой «пшик» 2–3 с через фильтр 160 Гц. Теперь три заранее посчитанных раската:
+   близкий — сухой треск и сразу низкий удар, дальний — без треска; дальше перекатывающийся гул
+   (бурый шум до ~120 Гц с несколькими волнами громкости), долгое затухание 5–8 с */
+function thunderBuf719(c, i) {
+  const key = 't' + i; if (RAIN719[key] && RAIN719[key].sampleRate === c.sampleRate) return RAIN719[key];
+  const sr = c.sampleRate, near = i === 0, T = near ? 7 : 8.5, L = Math.floor(sr * T), b = c.createBuffer(2, L, sr);
+  const rolls = []; let t = near ? 0.05 : 0.3 + Math.random() * 0.4;
+  while (t < T * 0.65) { rolls.push([t, 0.4 + Math.random() * 0.6, 0.35 + Math.random() * 0.9]); t += 0.25 + Math.random() * 0.9; }
+  const a1 = 2 * Math.PI * (near ? 140 : 95) / sr, a2 = 2 * Math.PI * 28 / sr, ac = 2 * Math.PI * 2500 / sr;
+  for (let ch = 0; ch < 2; ch++) {
+    const o = b.getChannelData(ch); let l1 = 0, l2 = 0, lc = 0, pk = 0;
+    for (let n = 0; n < L; n++) {
+      const s = n / sr, w = Math.random() * 2 - 1;
+      l1 += a1 * (w - l1); l2 += a2 * (l1 - l2); lc += ac * (w - lc);
+      let env = 0;
+      for (const [r0, amp, dur] of rolls) { const d = s - r0 - ch * 0.012; if (d > 0 && d < dur * 4) env += amp * (d < 0.08 ? d / 0.08 : Math.exp(-(d - 0.08) / dur)); }
+      env *= Math.exp(-s / (T * 0.45));
+      let v = (l1 - l2) * env * 3;
+      if (near && s < 0.35) v += (w - lc) * 0.5 * Math.exp(-s / 0.07);   // треск молнии рядом
+      o[n] = v; pk = Math.max(pk, Math.abs(v));
+    }
+    const g = pk > 0 ? 0.9 / pk : 1, fo = Math.floor(sr * 0.5);
+    for (let n = 0; n < L; n++) o[n] *= g * (n > L - fo ? (L - n) / fo : 1);
+  }
+  RAIN719[key] = b;
+  return b;
+}
+AMB_EV77.thunder = A => {
+  const c = A.c, i = Math.random() < 0.3 ? 0 : 1 + Math.floor(Math.random() * 2);
+  const s = c.createBufferSource(), g = c.createGain();
+  s.buffer = thunderBuf719(c, i); g.gain.value = i === 0 ? 0.55 : 0.32 + Math.random() * 0.15;
+  s.connect(g); g.connect(A.out); s.start(c.currentTime + 0.05); A.src.push(s);
+  s.onended = () => { const k = A.src.indexOf(s); if (k >= 0) A.src.splice(k, 1); };
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
