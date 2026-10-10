@@ -1255,6 +1255,54 @@ body.map70-on .toast.show{transform:translate(-50%,0)}
 .map70.m713-help .m70-hint.m713-old{display:block}
 .m713q{position:absolute;right:8px;bottom:8px;z-index:3;min-width:40px;height:40px;font-size:18px;background:rgba(16,19,27,.85);border:1px solid #a88a4c;border-radius:50%;color:#f1dfae}
 .m713q.on{background:#1d4a4a;border-color:#5fd0c3}
+/* 7.14 бой на карте: лента инициативы, карточка хода, шторка «Действия» */
+.m714-ini{order:40;flex:1 0 100%;display:flex;align-items:center;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 2px 3px;min-width:0}
+.m714-ini::-webkit-scrollbar{display:none}
+.m714-rd{flex:none;font-size:12px;color:var(--muted);font-weight:700;padding-right:2px}
+.m714-c{--rc:#5b8fd6;position:relative;flex:none;width:42px;height:42px;padding:3px;border-radius:50%;border:0;background:conic-gradient(var(--rc) calc(var(--p) * 1%),#2a2f3a 0);color:#e8dfc6}
+.m714-c i{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#151a24;font-style:normal;font-weight:700;font-size:13px;border:1px solid #05060a}
+.m714-c.f{--rc:#c9554b}.m714-c.f i{color:#f0b3ac}
+.m714-c.n{--rc:#4fc3b4}
+.m714-c.nohp{background:repeating-conic-gradient(#59606e 0 8deg,#2a2f3a 8deg 16deg)}
+.m714-c.me i{color:#9fd6ff}
+.m714-c.cur{box-shadow:0 0 0 2px #e0bd6e,0 0 10px #e0bd6e99}
+.m714-c.cur i{background:#2a2416;color:#f1dfae}
+.m714-c.sel{outline:2px solid #5fd0c3;outline-offset:1px}
+.m714-c.down{opacity:.38;filter:grayscale(1)}
+.m714-c u{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#59606e;border:1px solid #05060a}
+.m714-card{order:41;flex:1 0 100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid #5b4a2c;border-radius:10px;background:#10141d;font-size:13px}
+.m714-card b{color:var(--gold)}.m714-card b.foe{color:#f0b3ac}.m714-card span{color:#cfc6ae}
+.m714-cd i{font-style:normal;margin-right:2px}
+.m714-card .m714-x{min-width:32px!important;height:32px!important;font-size:13px}
+.m714-turn{margin:0 0 8px;padding:7px 8px;border:1px solid #5b4a2c;border-radius:12px;background:linear-gradient(#171c28,#10141d)}
+.m714-turn.idle{padding:0;border:0;background:none}
+.m714-turn.mine{border-color:#a88a4c;box-shadow:inset 0 0 14px #e0bd6e22}
+.m714-h{display:flex;align-items:center;gap:8px;font-size:14px;color:#cfc6ae;margin-bottom:6px}
+.m714-h b{color:#f1dfae}
+.m714-your{padding:3px 9px;border-radius:8px;background:#e0bd6e;color:#1b1608!important;letter-spacing:.04em}
+.m714-hp{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#cfc6ae;margin-bottom:6px}
+.m714-hp b{color:#f1dfae}.m714-hp b.foe{color:#f0b3ac}
+.m714-bar{flex:1 1 60px;min-width:60px;max-width:140px;height:8px;border-radius:5px;background:#2a2f3a;overflow:hidden}
+.m714-bar i{display:block;height:100%;background:linear-gradient(90deg,#b8443b,#d0645a)}
+.m714-pips{display:flex;gap:4px;flex-wrap:wrap}
+.m714-pip{font-style:normal;font-size:11px;font-weight:700;padding:2px 7px;border-radius:9px;background:#1f4d48;color:#c9f3ec;border:1px solid #3f9a8e}
+.m714-pip.off{background:#1a1d25;color:#6b7180;border-color:#2e3340;text-decoration:line-through}
+.m714-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.m714-nav{display:flex;gap:6px}
+.m714-nav .m70b{height:46px}
+.m714-next,.m714-acts,.m714-end{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.m714-next{width:100%;border-color:#a88a4c;background:linear-gradient(#2a2416,#1b170d);color:#f1dfae}
+.m714-nav small,.m714-acts small{font-size:11px;font-weight:500;color:var(--muted)}
+.m70b.gold,.m714-acts.gold{border-color:#a88a4c;background:linear-gradient(#2a2416,#1b170d)}
+.m714-acts.on{background:#1d4a4a;border-color:#5fd0c3}
+.m714-end{border-color:#3f9a8e;color:#c9f3ec}
+.m714-sh{position:absolute;left:0;right:0;bottom:0;z-index:6;max-height:64%;display:flex;flex-direction:column;background:linear-gradient(#141925,#0d1018);border-top:2px solid #a88a4c;border-radius:16px 16px 0 0;box-shadow:0 -8px 30px #000c}
+.m714-shh{display:flex;align-items:center;gap:8px;padding:8px 10px 4px;color:var(--gold)}
+.m714-shb{overflow-y:auto;overscroll-behavior:contain;padding:0 8px calc(10px + var(--safe-b))}
+.m714-shb .frame{margin:0}
+@media (orientation:landscape) and (max-height:540px){
+  body:not(.tv76) .m714-sh{left:auto;top:0;width:min(44vw,380px);max-height:none;border-radius:0;border-top:0;border-left:2px solid #a88a4c}
+}
 </style>
 </head>
 <body>
@@ -4247,7 +4295,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.13.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.14.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -22939,6 +22987,227 @@ info70 = function (V) {
     if (m) { const a = parseFloat(m[1].replace(',', '.')), b = parseFloat(m[2].replace(',', '.')); if (Number.isFinite(a) && Number.isFinite(b)) return s.replace(m[0], `${m[0]} · осталось ${num1(Math.max(0, b - a))} м`); }
   } catch (e) { /* ignore */ }
   return s;
+};
+/* =====================================================================
+   ВЫПУСК 7.14: БОЙ НА КАРТЕ
+   Раскладка поверх готовой логики боя (m08, m23, m26, m65): кнопки зовут те же data-act, что и вкладка «Бой».
+   - лента инициативы под шапкой карты: кружки по очереди, кольцо HP, текущий золотом, павшие тусклые;
+     у мастера тап = выбрать фишку, у игрока тап = раскрыть карточку (только то, что есть в public/combat);
+   - мастер (Фишки): «Раунд · ходит», выбранный участник с HP и кнопками −5 / урон / лечить / состояние / атака,
+     «◀» и «Следующий ход ▸ дальше …», «Конец боя»; урон всплывает над фишкой у всех (число — только если HP «точно»);
+   - игрок: «ВАШ ХОД · раунд · дальше …» или «Ходит …», своё HP и КБ, точки Действие/Бонус/Реакция,
+     «⚔ Действия» — шторка поверх карты с тем же блоком «Действия», что во вкладке «Бой» (узел переносится, не копируется),
+     «Завершить ход» в свой ход. Вне хода работают только реакция и ответы на броски (econCheck, как без карты).
+   Игроку сюда идёт только partyView().vc (public/combat) и свой лист: ничего сверх режима без карты.
+   ===================================================================== */
+const F714 = { acts: false, card: '', ph: null, cur: '' };
+const HPW714 = { 'Почти цел': 90, 'Ранен': 60, 'Тяжело ранен': 25, 'Повержен': 0 };
+
+function on714() { return M70.open && !(typeof TVM76 !== 'undefined' && TVM76) && !(typeof R77 !== 'undefined' && R77.rv); }
+/* строки очереди: мастер — из своего боя, игрок — из public/combat (как вкладка «Бой») */
+function rows714() {
+  if (appRole() === 'gm') {
+    const c = gm.combat; if (!c || !c.active) return null;
+    const vc = gmCombatRows();
+    vc.rows = vc.rows.map(r => Object.assign({}, r, { key: (r.act === 'gm-player' ? 'p:' : 'e:') + r.id, npc: r.act === 'gm-enemy' && !r.foe }));
+    return vc;
+  }
+  if (!inSession()) return null;
+  const pv = partyView(), vc = pv && pv.vc; if (!vc || !Array.isArray(vc.rows) || !vc.rows.length) return null;
+  return { round: vc.round, rows: vc.rows.map(r => Object.assign({}, r, { key: r.pid ? 'p:' + r.pid : 'e:' + r.eid, me: !!(r.pid && r.pid === myPid()) })) };
+}
+function next714(vc) {
+  const i = vc.rows.findIndex(r => r.cur), cur = vc.rows[i];
+  for (let j = 1; j <= vc.rows.length; j++) { const r = vc.rows[(i + j) % vc.rows.length]; if (r && r !== cur && !r.down) return r; }
+  return null;
+}
+function nm714(r) { return String((r && r.name) || '').replace(/ \(вы\)$/, ''); }
+function pct714(r) {
+  if (r.down) return 0;
+  if (r.pct != null && Number.isFinite(+r.pct)) return Math.round(+r.pct);
+  const w = HPW714[String(r.hp || '').trim()]; return w == null ? null : w;
+}
+
+/* ---------- лента инициативы ---------- */
+function iniHtml714(vc, V) {
+  const sel = appRole() === 'gm' ? M70.sel : F714.card;
+  const cs = vc.rows.map(r => {
+    const p = pct714(r), side = r.foe ? 'f' : r.npc ? 'n' : 'a';
+    const t = V && V.toks.find(x => x.key === r.key);
+    return `<button type="button" class="m714-c ${side}${r.cur ? ' cur' : ''}${r.down ? ' down' : ''}${r.me ? ' me' : ''}${sel === r.key ? ' sel' : ''}${p == null ? ' nohp' : ''}" data-m="ini714" data-v="${esc(r.key)}" style="--p:${p == null ? 100 : p}" aria-label="${esc(nm714(r))}"><i>${esc((typeof icoOf76 === 'function' && icoOf76({ side, n: nm714(r) })) || ini70(nm714(r)))}</i>${t && t.placed ? '' : '<u></u>'}</button>`;
+  }).join('');
+  return `<div class="m714-ini" id="m714-ini"><b class="m714-rd">Р${vc.round}</b>${cs}</div>${appRole() === 'gm' ? '' : cardHtml714(vc, V)}`;
+}
+/* карточка участника у игрока: только поля строки public/combat и значки состояний с фишки */
+function cardHtml714(vc, V) {
+  const r = F714.card && vc.rows.find(x => x.key === F714.card); if (!r) return '';
+  const t = V && V.toks.find(x => x.key === r.key), cd = t && Array.isArray(t.cd) ? t.cd.filter(id => COND_ICO71[id]) : [];
+  const bits = [r.down ? 'повержен' : r.hp ? (r.foe || r.npc ? r.hp : 'HP ' + r.hp) : 'HP скрыто', r.ac != null ? 'КБ ' + r.ac : '', r.cur ? 'ходит сейчас' : ''].filter(Boolean);
+  return `<div class="m714-card"><b class="${r.foe ? 'foe' : ''}">${esc(nm714(r))}</b><span>${esc(bits.join(' · '))}</span>${cd.length ? `<span class="m714-cd">${cd.map(id => `<i title="${esc((CONDS66[id] || {}).n || '')}">${COND_ICO71[id]}</i>`).join('')}</span>` : ''}<span class="m70-sp"></span><button type="button" class="m70b m714-x" data-m="ini714" data-v="${esc(r.key)}" aria-label="Свернуть">✕</button></div>`;
+}
+
+/* ---------- мастер: карточка хода ---------- */
+function gmTurnHtml714(vc) {
+  const cur = vc.rows.find(r => r.cur), nx = next714(vc);
+  const k = M70.sel, [kind, id] = String(k || '').split(':');
+  let sel = '';
+  if (kind === 'e' && enemyById(id)) {
+    const e = enemyById(id), its = gm.combat.order[gm.combat.turn] === k;
+    sel = `<div class="m714-sel"><div class="m714-hp"><b class="foe">${esc(e.name)}</b><span class="m714-bar"><i style="width:${barFill(e.hp, e.maxHp)}%"></i></span><span>HP <b>${e.hp}</b> / ${e.maxHp} · КБ ${e.ac}</span></div>
+      <div class="m714-btns">${its && e.hp > 0 ? `<button type="button" class="m70chip gold" data-act="b7-atk" data-id="${esc(id)}">⚔ Атака</button>` : ''}<button type="button" class="m70chip red" data-m="hp714" data-v="-5">−5</button><button type="button" class="m70chip red" data-act="b7-hp" data-id="${esc(id)}" data-v="-1">− Урон…</button><button type="button" class="m70chip" data-act="b7-hp" data-id="${esc(id)}" data-v="1">+ Лечить…</button><button type="button" class="m70chip" data-act="c66-open" data-k="${esc(k)}">Состояние</button></div></div>`;
+  } else if (kind === 'p' && playerById(id)) {
+    const p = playerById(id), s = summaryOf(p.sheet);
+    sel = `<div class="m714-sel"><div class="m714-hp"><b>${esc(s.name)}</b><span class="m714-bar"><i style="width:${barFill(s.hp, s.maxHP)}%"></i></span><span>HP <b>${s.hp}</b> / ${s.maxHP} · КБ ${s.ac}</span></div>
+      <div class="m714-btns"><button type="button" class="m70chip" data-act="c66-open" data-k="${esc(k)}">Состояние</button><button type="button" class="m70chip" data-act="gm-player" data-id="${esc(id)}">Лист</button></div></div>`;
+  }
+  return `<div class="m714-turn gm"><div class="m714-h"><span>Раунд <b>${vc.round}</b> · ходит <b>${esc(nm714(cur))}</b></span><span class="m70-sp"></span><button type="button" class="m70chip" data-act="gm-fight-end">Конец боя</button></div>
+    ${sel}
+    <div class="m714-nav"><button type="button" class="m70b" data-act="gm-turn" data-v="-1" aria-label="Назад по очереди">◀</button><button type="button" class="m70b m714-next" data-act="gm-turn" data-v="1">Следующий ход ▸${nx ? `<small>дальше ${esc(nm714(nx))}</small>` : ''}</button></div></div>`;
+}
+
+/* ---------- игрок: карточка хода ---------- */
+function plTurnHtml714(vc) {
+  const cur = vc.rows.find(r => r.cur), nx = next714(vc), mine = !!(cur && cur.me), t = state.turn, d = derive();
+  const hp = (state.hp && state.hp.current) || 0, max = d.maxHP || 0;
+  let wait = '';
+  if (!mine) { const i = vc.rows.findIndex(r => r.cur), j = vc.rows.findIndex(r => r.me); if (i >= 0 && j >= 0) { const n = vc.rows.slice(i + 1).concat(vc.rows.slice(0, i + 1)).filter(r => !r.down || r.me).findIndex(r => r.me) + 1; if (n > 0) wait = n === 1 ? 'вы следующий' : `вы через ${n}`; } }
+  const pip = (k, n) => { const off = typeof spent67 === 'function' ? spent67(k) : ''; return `<i class="m714-pip${off ? ' off' : ''}" title="${esc(off || 'есть')}">${n}</i>`; };
+  const done = !!(t && t.mine && state.turnDone && state.turnDone === t.key);
+  return `<div class="m714-turn pl${mine ? ' mine' : ''}">
+    <div class="m714-h">${mine ? `<b class="m714-your">ВАШ ХОД</b><span>раунд ${vc.round}${nx ? ' · дальше ' + esc(nm714(nx)) : ''}</span>` : `<span>Раунд ${vc.round} · ходит <b>${esc(nm714(cur))}</b>${wait ? ' · ' + wait : ''}</span>`}</div>
+    <div class="m714-hp"><span class="m714-bar"><i style="width:${barFill(hp, max)}%"></i></span><span>HP <b>${hp}</b> / ${max} · КБ ${d.ac}</span>${t ? `<span class="m714-pips">${pip('act', 'Действие')}${pip('bonus', 'Бонус')}${pip('react', 'Реакция')}</span>` : ''}</div>
+    <div class="m714-nav"><button type="button" class="m70b m714-acts${F714.acts ? ' on' : ''}${mine ? ' gold' : ''}" data-m="acts714">⚔ Действия${mine ? '' : '<small>реакция</small>'}</button>${mine ? `<button type="button" class="m70b m714-end" data-act="t65-end" ${done ? 'disabled' : ''}>${done ? 'Ход завершён' : 'Завершить ход'}</button>` : ''}</div></div>`;
+}
+
+/* ---------- шторка «Действия» у игрока: переносим живой блок со вкладки «Бой» ---------- */
+function sheet714() {
+  const fr = $('acts67-frame'), o = $('map70');
+  const want = F714.acts && on714() && appRole() === 'player' && !!rows714();
+  let sh = $('m714-sh');
+  if (want && fr && o) {
+    if (!sh) {
+      sh = document.createElement('div'); sh.id = 'm714-sh'; sh.className = 'm714-sh';
+      sh.innerHTML = '<div class="m714-shh"><b>Действия</b><span class="m70-sp"></span><button type="button" class="m70b" data-m="acts714" aria-label="Свернуть">✕</button></div><div class="m714-shb"></div>';
+      o.appendChild(sh);
+    }
+    const body = sh.querySelector('.m714-shb');
+    if (fr.parentNode !== body) { if (!F714.ph) { F714.ph = document.createComment('acts714'); fr.parentNode.insertBefore(F714.ph, fr); } body.appendChild(fr); }
+    sh.classList.remove('hidden');
+    return;
+  }
+  if (fr && F714.ph && F714.ph.parentNode) F714.ph.parentNode.insertBefore(fr, F714.ph);
+  if (F714.ph) { F714.ph.remove(); F714.ph = null; }
+  if (sh) sh.classList.add('hidden');
+  if (!want) F714.acts = false;
+}
+
+/* ---------- встраивание в шапку и нижнюю панель ---------- */
+function fightOn714(V) { return on714() && V && (!V.gmv || M70.mode === 'tok'); }
+const _gmTop714 = gmTop70;
+gmTop70 = function (V) {
+  const h = _gmTop714.apply(this, arguments);
+  try { const vc = fightOn714(V) && rows714(); if (vc) return h + iniHtml714(vc, V); } catch (e) { /* лента не должна ронять карту */ }
+  return h;
+};
+const _plTop714 = plTop70;
+plTop70 = function (V) {
+  const h = _plTop714.apply(this, arguments);
+  try { const vc = fightOn714(V) && rows714(); if (vc) return h + iniHtml714(vc, V); } catch (e) { /* ignore */ }
+  return h;
+};
+const _gmBar714 = gmBar70;
+gmBar70 = function (V) {
+  const h = _gmBar714.apply(this, arguments);
+  try {
+    if (!fightOn714(V)) return h;
+    const vc = rows714(); if (vc) return gmTurnHtml714(vc) + h;
+    if ((gm.enemies || []).length && !M70.sel) return `<div class="m714-turn gm idle"><button type="button" class="m70b m714-next" data-act="gm-fight">⚔ Начать бой</button></div>` + h;
+  } catch (e) { /* ignore */ }
+  return h;
+};
+const _plBar714 = plBar70;
+plBar70 = function (V) {
+  const h = _plBar714.apply(this, arguments);
+  try { const vc = fightOn714(V) && rows714(); if (vc) return plTurnHtml714(vc) + h; } catch (e) { /* ignore */ }
+  return h;
+};
+
+/* лента прокручивается сама к тому, кто ходит; прокрутку пальцем не сбрасываем */
+const _setHtml714 = setHtml70;
+setHtml70 = function (el, h) {
+  const ini = el && el.id === 'm70-top' ? el.querySelector('.m714-ini') : null, sl = ini ? ini.scrollLeft : 0;
+  const r = _setHtml714.apply(this, arguments);
+  if (ini) { const n = el.querySelector('.m714-ini'); if (n && n !== ini) n.scrollLeft = sl; }
+  return r;
+};
+function scrollIni714() {
+  const ini = $('m714-ini'); if (!ini) { F714.cur = ''; return; }
+  const c = ini.querySelector('.m714-c.cur'), k = c ? c.dataset.v : '';
+  if (!c || k === F714.cur) return;
+  F714.cur = k;
+  ini.scrollLeft = Math.max(0, c.offsetLeft - ini.clientWidth / 2 + c.offsetWidth / 2);
+}
+const _paint714 = paint70;
+paint70 = function () {
+  const r = _paint714.apply(this, arguments);
+  if (M70.open) try { scrollIni714(); sheet714(); } catch (e) { /* ignore */ }
+  return r;
+};
+const _close714 = closeMap70;
+closeMap70 = function () { const r = _close714.apply(this, arguments); try { F714.acts = false; F714.card = ''; F714.cur = ''; sheet714(); } catch (e) { /* ignore */ } return r; };
+
+/* ---------- урон всплывает над фишкой ---------- */
+function fx714(key, n) {
+  if (appRole() !== 'gm' || !gm.map || !n) return;
+  const [kind, id] = key.split(':'), e = kind === 'e' && enemyById(id);
+  const ev = { k: 'dmg', b: key, n: (n > 0 ? '+' : '−') + Math.abs(n), h: n > 0 ? 1 : 0 };
+  let pub = false;
+  try { const d = pubData70(); pub = !!(d && d.tk && d.tk[key]); } catch (er) { pub = false; }
+  if (pub) {   // игрокам — только фишкам, что у них и так есть; число только при HP «точно»
+    if (e && !(e.show && e.show.hp === 'exact')) { gmFx71(Object.assign({}, ev, { n: '' })); if (M70.open) { const P = tokAt71(key); if (P && fxOn71()) txt71(P, ev.n, n > 0 ? '#5fd0c3' : '#e0574a', 120, true); } }
+    else gmFx71(ev);
+  } else if (M70.open && fxOn71()) { const P = tokAt71(key); if (P) txt71(P, ev.n, n > 0 ? '#5fd0c3' : '#e0574a', 0, true); }
+}
+const _playFx714 = playFx71;
+playFx71 = function (e) {
+  if (e && e.k === 'dmg') {
+    if (!fxOn71() || !M70.open) return;
+    const P = tokAt71(e.b); if (!P) return;
+    if (e.h) { magic71(P, '#5fd0c3'); if (e.n) txt71(P, String(e.n), '#5fd0c3', 120, true); }
+    else { hitAt71(P, 1); if (e.n) txt71(P, String(e.n), '#e0574a', 120, true); }
+    return;
+  }
+  return _playFx714.apply(this, arguments);
+};
+const _b7HpGo714 = b7HpGo;
+b7HpGo = function () {
+  const H = B7.hp, e = H && enemyById(H.id), was = e ? e.hp : null;
+  const r = _b7HpGo714.apply(this, arguments);
+  try { if (e && e.hp !== was) fx714('e:' + e.id, e.hp - was); } catch (er) { /* ignore */ }
+  return r;
+};
+
+/* ---------- команды ---------- */
+const _act714 = act70;
+act70 = function (cmd, el) {
+  const v = el && el.dataset ? el.dataset.v : '';
+  if (cmd === 'ini714') {
+    if (appRole() === 'gm') M70.sel = M70.sel === v ? null : v;
+    else F714.card = F714.card === v ? '' : v;
+    const V = M70.V, t = V && V.toks.find(x => x.key === v && x.placed), w = M70.view;
+    if (t && w && (appRole() === 'gm' ? M70.sel : F714.card)) { w.x = t.x - w.W / 2 / w.s; w.y = t.y - w.H / 2 / w.s; }
+    paint70(); return;
+  }
+  if (cmd === 'acts714') { if (appRole() !== 'player') return; F714.acts = !F714.acts; paint70(); return; }
+  if (cmd === 'hp714') {
+    if (appRole() !== 'gm') return;
+    const k = String(M70.sel || ''), e = k[0] === 'e' && enemyById(k.slice(2)), n = Number(v) || 0; if (!e || !n) return;
+    const was = e.hp; e.hp = Math.max(0, Math.min(e.maxHp, e.hp + n)); if (e.hp === was) return;
+    bossPhaseCheck(e);
+    gmLog('Мастер', `${e.name}: ${n < 0 ? 'урон' : 'лечение'} ${Math.abs(n)}, HP ${e.hp} / ${e.maxHp}.${e.hp === 0 ? ' Повержен.' : ''}`, n < 0 ? 'error' : 'heal');
+    fx714(k, e.hp - was); gmSave(); paint70(); return;
+  }
+  return _act714.apply(this, arguments);
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
