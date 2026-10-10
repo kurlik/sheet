@@ -1335,6 +1335,17 @@ body.map70-on .toast.show{transform:translate(-50%,0)}
 .m715-fl b{color:#f1dfae}
 /* тост поверх карты не перехватывает касания (рисование, перетаскивание); сам гаснет */
 body.map70-on .toast{pointer-events:none}
+/* 7.16 заклинания с карты */
+.m716-btn{font-size:13.5px}
+.m716-mp{color:#8fd8cf;font-size:12px}
+.m716-list{display:flex;flex-direction:column;gap:6px}
+.m716-sp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:48px;padding:7px 10px;border-radius:10px;border:1px solid #39465c;background:linear-gradient(#18202e,#121823);color:#efe4c4;text-align:left;font:inherit}
+.m716-sp b{font-size:14.5px;font-weight:700}
+.m716-sp b i{font-style:normal;font-size:11px;font-weight:600;color:#5fd0c3}
+.m716-sp small{font-size:12px;color:#9fb0c6}
+.m716-sp em{font-style:normal;font-size:11.5px;color:#d0645a}
+.m716-sp.off{opacity:.55}
+.m716-sp:not(.off):active{border-color:#e0bd6e;background:#2a2412}
 </style>
 </head>
 <body>
@@ -4327,7 +4338,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.15.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.16.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -23387,6 +23398,225 @@ fit70 = function (V, focus) {
       Object.assign(keep, { s: v.s, x: v.x, y: v.y, W: v.W, H: v.H });   // paint70 берёт центр и масштаб из keep
   } catch (e) { /* остаётся как было */ }
   return r;
+};
+/* =====================================================================
+   ВЫПУСК 7.16: ЗАКЛИНАНИЯ С КАРТЫ
+   Игрок колдует, не уходя с карты; логика броска та же, что на листе (useAbility / openAbility6 / act6Go).
+   - «✨ Заклинание» в карточке хода (вне боя — чипом внизу): шторка со всеми приёмами листа, цена, цель, дальность;
+     недоступное тусклое с причиной (MP, лимит, «не ваш ход» — econCheck как без карты, реакции можно всегда);
+   - область: шаблон от фишки (paFrom74 из 7.4), с выбранной целью — сразу на неё;
+   - цель (враг / союзник / до N союзников): касание фишек на карте, кольцо на выбранных, проверка дальности и видимости,
+     «Колдовать» открывает обычное окно броска с уже отмеченными целями;
+   - меню по касанию врага: «Заклинание или умение» больше не уводит на вкладку «Бой», у союзника тоже есть;
+   - мастер: в карточке выбранного врага его умения со спасброском — шаблон области от фишки, уже заполненный.
+   Игроку цели только из targetList() (public/combat и отряд) и фишек его карты: ничего сверх режима без карты.
+   ===================================================================== */
+const C716 = { open: false, pre: '', tg: null };
+const TGN716 = { self: 'на себя', ally: '💚 союзник', allies: '💚 союзники', enemy: '🎯 цель', area: '📐 область' };
+const KIND716 = { bonus: 'бонус', reaction: 'реакция', free: 'без действия', action: 'действие' };
+
+function pl716() { return M70.open && appRole() === 'player' && !(typeof TVM76 !== 'undefined' && TVM76) && !(typeof R77 !== 'undefined' && R77.rv); }
+function tgOf716(a) { const s = ABIL6[a.id]; return s && s.tgt ? s.tgt : ''; }
+function rng716(a) {
+  const m = String((a && a.desc) || '').match(/до (\d+(?:[,.]\d+)?) м/);
+  return m ? parseFloat(m[1].replace(',', '.')) : 0;
+}
+/* почему сейчас нельзя: те же проверки, что у кнопки «Применить» на листе */
+function why716(a) {
+  if (state.mp.current < a.cost) return `нужно ${a.cost} MP`;
+  if (lim68Left(a) === 0) return 'уже использовано';
+  const ec = econCheck(a.kind);
+  if (!ec.ok) { const s = ec.msg.replace(/\.$/, ''); return s.charAt(0).toLowerCase() + s.slice(1); }
+  return '';
+}
+function fit716(t) { return !t ? null : t.side === 'a' ? ['ally', 'allies', 'area'] : ['enemy', 'area']; }
+function idOf716(t) { return t.me ? 'self' : t.key; }
+
+/* ---------- шторка выбора ---------- */
+function list716(V) {
+  const d = derive(), pt = C716.pre && V && V.toks.find(x => x.key === C716.pre), fit = fit716(pt);
+  const cls = classDef(), res = cls ? cls.resource : 'MP';
+  const acts = visibleActions(d).filter(a => !fit || fit.includes(tgOf716(a)))
+    .map(a => ({ a, w: why716(a) })).sort((x, y) => (!!x.w - !!y.w) || x.a.lvl - y.a.lvl || x.a.cost - y.a.cost);
+  const head = `<div class="m714-shh"><b>✨ ${pt ? 'На ' + esc(short70(pt.n)) : 'Заклинания и умения'}</b><small class="m716-mp">${esc(res)} ${state.mp.current} / ${d.maxMP}</small><span class="m70-sp"></span><button type="button" class="m70b" data-m="sp716-x" aria-label="Свернуть">✕</button></div>`;
+  if (!acts.length) return head + `<div class="m714-shb"><p class="m70-hint">${pt ? 'На эту цель нечего применить.' : 'У героя нет приёмов.'}</p></div>`;
+  const bs = acts.map(({ a, w }) => {
+    const tg = tgOf716(a), r = tg === 'area' ? (AOE74[a.id] || {}).rng || 0 : rng716(a), on = state.effects.some(x => x.src === a.id);
+    const sub = [a.cost ? a.cost + ' MP' : 'бесплатно', KIND716[a.kind] || 'действие', TGN716[tg] || '', r ? 'до ' + meters(r) : ''].filter(Boolean).join(' · ');
+    return `<button type="button" class="m716-sp${w ? ' off' : ''}" data-m="sp716-go" data-v="${esc(a.id)}"><b>${esc(a.title)}${on ? ' <i>действует</i>' : ''}</b><small>${esc(sub)}</small>${w ? `<em>${esc(w)}</em>` : ''}</button>`;
+  }).join('');
+  return head + `<div class="m714-shb m716-list">${bs}</div>`;
+}
+function sheet716() {
+  const o = $('map70'); if (!o) return;
+  let sh = $('m716-sh');
+  if (!(C716.open && pl716())) { if (sh) sh.classList.add('hidden'); if (!pl716()) C716.open = false; return; }
+  if (!sh) { sh = document.createElement('div'); sh.id = 'm716-sh'; sh.className = 'm714-sh m716-sh'; o.appendChild(sh); }
+  const h = list716(M70.V);
+  if (sh.dataset.h !== h) { const b = sh.querySelector('.m714-shb'), st = b ? b.scrollTop : 0; sh.innerHTML = h; sh.dataset.h = h; const n = sh.querySelector('.m714-shb'); if (n) n.scrollTop = st; }
+  sh.classList.remove('hidden');
+}
+function open716(pre) {
+  if (!pl716()) return;
+  C716.open = true; C716.pre = pre || ''; C716.tg = null;
+  F714.acts = false; M74.pa = null; M70.pop = null; M70.ruler = null;
+  paint70();
+}
+
+/* ---------- цель на карте ---------- */
+function bad716(V, G, t) {
+  const me = V.toks.find(x => x.me), id = idOf716(t);
+  const ok = new Set(tgFilter(targetList(), G.tgt).map(x => x.id));
+  if (!ok.has(id)) return G.tgt === 'enemy' ? 'Эта фишка не в бою: цель можно выбрать в окне броска.' : 'Это заклинание на союзников.';
+  if (id === 'self' || !me || !me.placed || !t.placed) return '';
+  const dd = dist70(me, t);
+  if (G.rng && dd > G.rng + 0.01) return `Слишком далеко: до ${meters(G.rng)}, а здесь ${meters(dd)}.`;
+  try { if (!los73(occ73(V), me.x, me.y, t.x, t.y)) return 'Туда не видно: мешает стена или закрытая дверь.'; } catch (e) { /* без 7.3 */ }
+  return '';
+}
+function cast716(a, s, sel) {
+  const ids = new Set(targetList().map(t => t.id));
+  C716.tg = null; M70.ruler = null; paint70();
+  openAbility6(a, s);
+  if (act6) { act6.sel = sel.filter(id => ids.has(id)); refreshModal(); }
+}
+function pick716(id) {
+  if (typeof downLock70 === 'function' && downLock70()) { toast(state.death70 && state.death70.dead ? 'Вы погибли.' : 'Вы без сознания (0 HP): ни действий, ни передачи, ни отдыха.', 'error'); return; }
+  const d = derive(), a = visibleActions(d).find(x => x.id === id); if (!a) return;
+  const w = why716(a); if (w) { toast(`«${a.title}»: ${w}.`, 'info'); return; }
+  const V = M70.V, s = ABIL6[id], tg = tgOf716(a), pre = C716.pre, pt = pre && V && V.toks.find(x => x.key === pre);
+  const me = V && V.toks.find(x => x.me && x.placed);
+  C716.open = false; C716.pre = '';
+  if (tg === 'area') {
+    if (!me || !inSession() || !rules74(V).aoe) { useAbility(id); paint70(); return; }
+    paFrom74(id);
+    const P = M74.pa; if (P && !P.S && pt && pt.placed) paTap74(M70.V || V, { x: pt.x, y: pt.y });
+    return;
+  }
+  if (tg === 'enemy' || tg === 'ally' || tg === 'allies') {
+    const G = { id, title: a.title, tgt: tg, max: tg === 'allies' ? (s.max || 6) : 1, rng: rng716(a), sel: [] };
+    if (pt) { const b = bad716(V, G, pt); if (b) toast(b, 'info'); else G.sel = [idOf716(pt)]; }
+    if (G.sel.length && tg !== 'allies') { cast716(a, s, G.sel); return; }
+    if (!V || !V.toks.some(x => x.placed)) { cast716(a, s, G.sel); return; }
+    C716.tg = G; M70.pop = null; M70.ruler = null; paint70(); return;
+  }
+  useAbility(id);   // на себя или без цели — как «Применить» на листе
+  paint70();
+}
+function tgTap716(V, p) {
+  const G = C716.tg, t = hitTok70(V, p); if (!t) return;
+  const id = idOf716(t);
+  if (G.sel.includes(id)) { G.sel = G.sel.filter(x => x !== id); paint70(); return; }
+  const b = bad716(V, G, t); if (b) { toast(b, 'info'); return; }
+  G.sel = G.max <= 1 ? [id] : G.sel.concat([id]).slice(-G.max);
+  const me = V.toks.find(x => x.me && x.placed);
+  M70.ruler = me && !t.me ? { a: { x: me.x, y: me.y }, b: { x: t.x, y: t.y }, d: dist70(me, t) } : null;
+  paint70();
+}
+function tgBar716(V) {
+  const G = C716.tg, me = V.toks.find(t => t.me);
+  const nm = G.sel.map(id => { const t = id === 'self' ? me : V.toks.find(x => x.key === id); return id === 'self' ? 'вы' : t ? short70(t.n) + (me && me.placed && t.placed ? ' (' + meters(dist70(me, t)) + ')' : '') : '?'; });
+  const hint = G.tgt === 'enemy' ? 'Коснитесь цели на карте.' : G.tgt === 'allies' ? `Коснитесь союзников (до ${G.max}), себя тоже можно.` : 'Коснитесь союзника или своей фишки.';
+  return `<div class="m70-row"><b>✨ ${esc(G.title)}</b><small>${TGN716[G.tgt]}${G.rng ? ' · до ' + meters(G.rng) : ''}</small><span class="m70-sp"></span><button type="button" class="m70b" data-m="tg716-x" aria-label="Отмена">✕</button></div>
+    <p class="m70-hint">${G.sel.length ? 'Цель: ' + esc(nm.join(', ')) : hint}</p>
+    <div class="m70-scroll">${chip74('tg716-go', '', G.sel.length ? `Колдовать${G.sel.length > 1 ? ' (' + G.sel.length + ')' : ''}` : 'Выбрать в окне', false, 'gold')}</div>`;
+}
+
+/* ---------- мастер: умения врага со спасброском — шаблоном от фишки ---------- */
+function gmSkills716() {
+  const k = String(M70.sel || ''), e = k[0] === 'e' && enemyById(k.slice(2));
+  if (!e || e.hp <= 0 || !gmRules74().aoe) return '';
+  return (e.attacks || []).map((x, i) => (x && x.kind === 'save' ? `<button type="button" class="m70chip gold" data-m="ga716" data-v="${i}">📐 ${esc(x.name || 'Умение')}</button>` : '')).join('');
+}
+
+/* ---------- встраивание ---------- */
+const _plTurn716 = plTurnHtml714;
+plTurnHtml714 = function (vc) {
+  const h = _plTurn716.apply(this, arguments);
+  try {
+    const mine = h.indexOf('m714-turn pl mine') >= 0, i = h.indexOf('data-m="acts714"'), j = i < 0 ? -1 : h.indexOf('</button>', i);
+    if (j < 0) return h;
+    const b = `<button type="button" class="m70b m714-acts m716-btn${C716.open || C716.tg ? ' on' : ''}${mine ? ' gold' : ''}" data-m="sp716">✨ Заклинание${mine ? '' : '<small>реакция</small>'}</button>`;
+    return h.slice(0, j + 9) + b + h.slice(j + 9);
+  } catch (e) { return h; }
+};
+const _gmTurn716 = gmTurnHtml714;
+gmTurnHtml714 = function (vc) {
+  const h = _gmTurn716.apply(this, arguments);
+  try { const c = gmSkills716(); if (c) return h.replace('<button type="button" class="m70chip" data-act="c66-open"', c + '$&'); } catch (e) { /* ignore */ }
+  return h;
+};
+const _plBar716 = plBar70;
+plBar70 = function (V) {
+  if (C716.tg && pl716()) { try { return tgBar716(V); } catch (e) { C716.tg = null; } }
+  const h = _plBar716.apply(this, arguments);
+  try {
+    if (pl716() && !M74.pa && !M74.note && V.toks.some(t => t.me) && !(fightOn714(V) && rows714()))
+      return h.replace('<div class="m70-scroll m74-row">', '$&' + chip74('sp716', '', '✨ Заклинание', C716.open));
+  } catch (e) { /* ignore */ }
+  return h;
+};
+const _pop716 = popHtml70;
+popHtml70 = function (V) {
+  let h = _pop716.apply(this, arguments);
+  try {
+    if (!h || !V || V.gmv || !pl716()) return h;
+    h = h.replace('>Заклинание или умение<small>на вкладке «Бой»</small>', '>✨ Заклинание или умение<small>с карты</small>');
+    const P = M70.pop, t = P && P.key && !P.st71 && !P.st72 && !P.st74 && V.toks.find(x => x.key === P.key);
+    if (t && t.side === 'a' && !t.me && h.indexOf('data-m="pop-skill"') < 0 && visibleActions(derive()).some(a => ['ally', 'allies'].includes(tgOf716(a)))) {
+      const i = h.indexOf('</div>');
+      if (i >= 0) h = h.slice(0, i + 6) + '<button type="button" class="m70pop-b" data-m="pop-skill" data-v="">✨ Заклинание<small>на союзника</small></button>' + h.slice(i + 6);
+    }
+  } catch (e) { /* ignore */ }
+  return h;
+};
+const _tok716 = tokSvg70;
+tokSvg70 = function (t, V, hl) {
+  if (!hl && C716.tg && V && !V.gmv && C716.tg.sel.includes(idOf716(t))) hl = C716.tg.tgt === 'enemy' ? '#e0574a' : '#5fd0c3';
+  return _tok716.call(this, t, V, hl);
+};
+const _tap716 = tap70;
+tap70 = function (V, p) {
+  if (V && !V.gmv && C716.tg) { tgTap716(V, p); return; }
+  return _tap716.apply(this, arguments);
+};
+const _paint716 = paint70;
+paint70 = function () {
+  const r = _paint716.apply(this, arguments);
+  if (M70.open) try { sheet716(); } catch (e) { /* ignore */ }
+  return r;
+};
+const _close716 = closeMap70;
+closeMap70 = function () { C716.open = false; C716.pre = ''; C716.tg = null; const r = _close716.apply(this, arguments); try { sheet716(); } catch (e) { /* ignore */ } return r; };
+
+const _act716 = act70;
+act70 = function (cmd, el) {
+  const v = el && el.dataset ? el.dataset.v : '';
+  switch (cmd) {
+    case 'sp716': if (!pl716()) return; if (C716.open || C716.tg) { C716.open = false; C716.tg = null; M70.ruler = null; paint70(); } else open716(''); return;
+    case 'sp716-x': C716.open = false; C716.pre = ''; paint70(); return;
+    case 'sp716-go': if (pl716()) pick716(v); return;
+    case 'tg716-x': C716.tg = null; M70.ruler = null; paint70(); return;
+    case 'tg716-go': {
+      const G = C716.tg; if (!G || !pl716()) return;
+      const a = visibleActions(derive()).find(x => x.id === G.id), s = ABIL6[G.id]; if (!a || !s) { C716.tg = null; paint70(); return; }
+      const w = why716(a); if (w) { toast(`«${a.title}»: ${w}.`, 'info'); return; }
+      cast716(a, s, G.sel); return;
+    }
+    case 'pop-skill': if (appRole() !== 'player') break; { const k = M70.pop && M70.pop.key; open716(k || ''); } return;
+    case 'ga716': {
+      if (appRole() !== 'gm') return;
+      const k = String(M70.sel || ''), e = k[0] === 'e' && enemyById(k.slice(2)), x = e && (e.attacks || [])[+v];
+      if (!x || x.kind !== 'save') return;
+      _act716('ga74', { dataset: { v: '' } });
+      if (M74.ga) Object.assign(M74.ga, { st: x.stat || 'Лов', dc: +x.dc || 13, dmg: x.dmg ? String(x.dmg) : '', dt: x.dmgType || '', half: !!x.half, n: x.name || 'Область' });
+      paint70(); return;
+    }
+    case 'acts714': C716.open = false; C716.tg = null; break;
+    case 'close': C716.open = false; C716.pre = ''; C716.tg = null; break;
+    default: break;
+  }
+  return _act716.apply(this, arguments);
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
