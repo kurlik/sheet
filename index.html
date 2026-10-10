@@ -1232,6 +1232,29 @@ body.tb76 .m70-bar{max-height:40vh}
   .gm-dock{bottom:calc(50px + var(--safe-b));max-height:70vh;max-height:70dvh}
   .scroll{max-height:96vh;max-height:96dvh;width:min(96vw,600px)}
 }
+
+/* ---------- 7.13: быстрые починки карты ---------- */
+.m70-top .m70b{min-width:44px;height:44px}
+.m70-seg button{height:42px}
+.m70-top .m70-info.big{order:20;flex:1 0 100%;white-space:normal;text-align:center;font-size:15px;line-height:1.25}
+@media (max-width:440px){
+  .m70-top .m70b{min-width:40px;padding:0 6px}
+  .m70-top{gap:4px}
+  .m70-seg .m79-t{display:inline}
+  .m70-seg .m79-i{display:none}
+  .m70-seg button{padding:0 6px;font-size:12px}
+}
+@media (orientation:landscape) and (max-height:540px){
+  body:not(.tv76) .m70-seg .m79-t{display:none}
+  body:not(.tv76) .m70-seg .m79-i{display:inline}
+  body:not(.tv76) .m70-top .m70b{min-width:40px;height:40px}
+}
+body.map70-on .toast{top:calc(108px + var(--safe-t));bottom:auto;transform:translate(-50%,-16px)}
+body.map70-on .toast.show{transform:translate(-50%,0)}
+.m70-hint.m713-old{display:none}
+.map70.m713-help .m70-hint.m713-old{display:block}
+.m713q{position:absolute;right:8px;bottom:8px;z-index:3;min-width:40px;height:40px;font-size:18px;background:rgba(16,19,27,.85);border:1px solid #a88a4c;border-radius:50%;color:#f1dfae}
+.m713q.on{background:#1d4a4a;border-color:#5fd0c3}
 </style>
 </head>
 <body>
@@ -4224,7 +4247,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.12.1';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.13.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -22669,6 +22692,253 @@ ground711 = function (V, lines, simple) {
   const add = Object.keys(TILE7121).filter(k => s.indexOf(`url(#m711t-${k})`) >= 0 && s.indexOf(`id="m711t-${k}"`) < 0)
     .map(k => `<pattern id="m711t-${k}" width="${TILE7121[k][1]}" height="${TILE7121[k][1]}" patternUnits="userSpaceOnUse"><image href="${tile7121(k)}" width="${TILE7121[k][1]}" height="${TILE7121[k][1]}" preserveAspectRatio="none"/></pattern>`).join('');
   return add ? s.replace('</defs>', add + '</defs>') : s;
+};
+/* =====================================================================
+   ВЫПУСК 7.13 (часть 1): ИГРОК НА КАРТЕ НЕ ПОЛУЧАЕТ БОЛЬШЕ, ЧЕМ БЕЗ КАРТЫ
+   public/ сессии может прочитать любой игрок в обход интерфейса, поэтому прятать надо в данных, а не на экране.
+   1) Спрятавшийся «Скрытностью» враг, которого заметили не все: из public/map.tk убираем совсем (в fg, как невидимого),
+      а заметившим его позицию шлём лично через их inbox (команда sn713, игрок держит её в sess.sn713 и подмешивает
+      в карту). Экран «показать всё» (tv76.all) получает его, как и прочих скрытых, в tvx.
+   2) Туман войны: планировка (предметы, стены и двери комнат, проёмы, линии) уходит игрокам только там, где отряд
+      уже что-то видел. Мастер ведёт свою «разведанную» сетку gm.map.ex713 (клетка 0,5 м, как память карты 7.3),
+      каждый показ добавляет то, что видят фишки отряда сейчас. Новая карта (mid) или размер поля — сетка с нуля.
+      Повтор боя (rp77) берёт позиции из того же pubData70, так что и туда скрытые не попадают.
+   ===================================================================== */
+const P713 = { priv: {}, sent: {}, timer: null, cache: { pm: null, sn: null, out: null } };
+
+/* ---------- мастер: разведанная сетка ---------- */
+function ex713(V) {
+  const m = gmMap70(), sig = (m.mid || '') + '|' + V.w + 'x' + V.h, cols = Math.ceil(V.w / MEM73), rows = Math.ceil(V.h / MEM73);
+  let E = m.ex713;
+  if (!E || E.sig !== sig || typeof E.b !== 'string' || E.b.length !== cols * rows) E = m.ex713 = { sig, b: '0'.repeat(cols * rows), k: '' };
+  const P = party73(V), C = P.C, vw = P.vw;
+  const key = vw.map(v => `${r2_70(v.x)},${r2_70(v.y)},${v.dv}`).join(';') + '|' + C.amb + C.cap + '|' + C.g.sig + '|' + C.lights.length;
+  if (E.k !== key) {
+    const bits = E.b.split(''), lit = C.lit && C.amb < 1 ? litGrid73(V, C, cols, rows) : null;
+    vw.forEach(v => {
+      const c0 = Math.floor(v.x / MEM73), r0 = Math.floor(v.y / MEM73);   // клетка, где стоит сам смотрящий
+      if (c0 >= 0 && c0 < cols && r0 >= 0 && r0 < rows) bits[r0 * cols + c0] = '1';
+      rowsOf73(visPoly73(C.g, v.x, v.y), V.h, (r, xa, xb) => {
+        const y = (r + 0.5) * MEM73;
+        for (let c = Math.max(0, Math.ceil(xa / MEM73 - 0.5)); c < cols && (c + 0.5) * MEM73 <= xb; c++) {
+          const i = r * cols + c; if (bits[i] === '1') continue;
+          const d = Math.hypot((c + 0.5) * MEM73 - v.x, y - v.y);
+          if (d > C.cap) continue;
+          if (lit && d > v.dv && !lit[i]) continue;
+          bits[i] = '1';
+        }
+      });
+    });
+    E.b = bits.join(''); E.k = key;
+  }
+  return { b: E.b, cols, rows };
+}
+/* есть ли разведанная клетка в прямоугольнике (метры) */
+function exIn713(E, x0, y0, x1, y1) {
+  const c0 = Math.max(0, Math.floor(x0 / MEM73)), c1 = Math.min(E.cols - 1, Math.floor(x1 / MEM73));
+  const r0 = Math.max(0, Math.floor(y0 / MEM73)), r1 = Math.min(E.rows - 1, Math.floor(y1 / MEM73));
+  for (let r = r0; r <= r1; r++) { const row = r * E.cols; for (let c = c0; c <= c1; c++) if (E.b[row + c] === '1') return true; }
+  return false;
+}
+function itemSeen713(E, a) {
+  const x = +a[2] || 0, y = +a[3] || 0, w = Math.abs(+a[4] || 0), h = Math.abs(+a[5] || 0), r = ((+a[6] || 0) % 180 + 180) % 180;
+  let hw = w / 2, hh = h / 2;
+  if (Math.abs(r - 90) < 0.5) { hw = h / 2; hh = w / 2; } else if (r > 0.5 && r < 179.5) hw = hh = Math.hypot(w, h) / 2;
+  const pad = 0.5;
+  return exIn713(E, x - hw - pad, y - hh - pad, x + hw + pad, y + hh + pad);
+}
+function layout713(d, V) {
+  const E = ex713(V);
+  if (Array.isArray(d.it)) d.it = d.it.filter(a => Array.isArray(a) && itemSeen713(E, a));
+  if (Array.isArray(d.ln711)) d.ln711 = d.ln711.filter(a => {
+    const pad = (+a[2] || 1) / 2 + 0.5, pts = Array.isArray(a[3]) ? a[3] : [];
+    return pts.some(p => Array.isArray(p) && exIn713(E, p[0] - pad, p[1] - pad, p[0] + pad, p[1] + pad));
+  });
+  if (Array.isArray(d.rm79)) {
+    d.rm79 = d.rm79.filter(a => Array.isArray(a) && exIn713(E, (+a[1] || 0) - 0.5, (+a[2] || 0) - 0.5, (+a[1] || 0) + (+a[3] || 0) + 0.5, (+a[2] || 0) + (+a[4] || 0) + 0.5));
+    if (!d.rm79.length) delete d.rm79;
+  }
+  if (Array.isArray(d.cut79)) {
+    d.cut79 = d.cut79.filter(k => { const p = String(k).split(',').map(Number); if (p.length < 4 || p.some(n => !Number.isFinite(n))) return false; const x = (p[0] + p[2]) / 2, y = (p[1] + p[3]) / 2; return exIn713(E, x - 0.5, y - 0.5, x + 0.5, y + 0.5); });
+    if (!d.cut79.length || !d.rm79) delete d.cut79;
+  }
+}
+
+/* ---------- мастер: последняя обёртка над тем, что уходит в public/map ---------- */
+const _pub713 = pubData70;
+pubData70 = function () {
+  const d = _pub713.apply(this, arguments); if (!d || !d.tk) return d;
+  const priv = {}, all = tvAll76(), fg = Array.isArray(d.fg) ? d.fg : [];
+  Object.keys(d.tk).forEach(k => {
+    const a = d.tk[k];
+    if (k[0] === 'p' || !Array.isArray(a) || typeof a[12] !== 'string' || !a[12]) return;
+    a[12].split(',').filter(Boolean).forEach(u => { (priv[u] = priv[u] || {})[k] = a.slice(0, 12).concat([u]); });
+    delete d.tk[k]; if (!fg.includes(k)) fg.push(k);
+    if (all) { d.tvx = d.tvx || {}; d.tvx[k] = a.slice(0, 12); }
+  });
+  if (fg.length) d.fg = fg;
+  ['c77', 'ic77', 'bon79'].forEach(n => { const o = d[n]; if (o && typeof o === 'object') { Object.keys(o).forEach(k => { if (!d.tk[k]) delete o[k]; }); if (!Object.keys(o).length) delete d[n]; } });
+  P713.priv = priv;
+  try { const V = gmView70(); if (!all && fogOn73(V)) layout713(d, V); } catch (e) { /* туман не должен ронять показ карты */ }
+  return d;
+};
+/* лично заметившим: только когда их набор поменялся; после перезапуска мастера — один раз каждому */
+function sendPriv713() {
+  if (!gm.session || gm.session.demo || appRole() !== 'gm') return;
+  const code = gm.session.code, mid = (gm.map && gm.map.mid) || '';
+  (gm.players || []).forEach(p => {
+    const tk = P713.priv[p.id] || {}, js = code + '|' + mid + '|' + JSON.stringify(tk);
+    if (P713.sent[p.id] === js) return;
+    P713.sent[p.id] = js;
+    fbReq('POST', `sessions/${code}/players/${p.id}/inbox`, { type: 'sn713', tk, mid, t: serverNow() }).catch(() => { delete P713.sent[p.id]; });
+  });
+}
+const _publish713 = publishMap70;
+publishMap70 = function () {
+  const r = _publish713.apply(this, arguments);
+  clearTimeout(P713.timer);
+  P713.timer = setTimeout(() => { try { if (gm.map && gm.map.show) { pubData70(); sendPriv713(); } } catch (e) { /* ignore */ } }, 450);
+  return r;
+};
+
+/* ---------- игрок: личные фишки подмешиваем в карту ---------- */
+const _applyCmd713 = applyCmd;
+applyCmd = function (c, isLive) {
+  if (c && c.type === 'sn713') {
+    if (sess && !sess.demo) { sess.sn713 = { code: sess.code, mid: String(c.mid || ''), tk: c.tk && typeof c.tk === 'object' ? c.tk : {} }; saveSess(); }
+    if (typeof M70 !== 'undefined' && M70.open) paintSoon70();
+    return;
+  }
+  return _applyCmd713.apply(this, arguments);
+};
+const _plPub713 = plPub70;
+plPub70 = function () {
+  const pm = _plPub713.apply(this, arguments);
+  const sn = sess && !sess.demo && sess.sn713;
+  if (!pm || !sn || sn.code !== sess.code || (sn.mid && pm.mid && sn.mid !== pm.mid) || !Object.keys(sn.tk || {}).length) return pm;
+  const C = P713.cache;
+  if (C.pm === pm && C.sn === sn) return C.out;
+  const tk = Object.assign({}, pm.tk || {});
+  Object.entries(sn.tk).forEach(([k, a]) => { if (Array.isArray(a) && !tk[k]) tk[k] = a; });
+  const fg = Array.isArray(pm.fg) ? pm.fg.filter(k => !sn.tk[k]) : pm.fg;
+  P713.cache = { pm, sn, out: Object.assign({}, pm, { tk, fg }) };
+  return P713.cache.out;
+};
+/* =====================================================================
+   ВЫПУСК 7.13 (часть 2): БЫСТРЫЕ ПОЧИНКИ КАРТЫ
+   - игрок в свой ход: «осталось N м» отдельной строкой под кнопками шапки (на 360 px было «0..»);
+   - шапка мастера: «Фишки | Стройка» подписями, сетка ушла в «⋯ Настройки карты», кнопки 44 px;
+   - тосты при открытой карте сверху, а не на нижней панели;
+   - ↶ ↷ у мастера в «Стройке», а в режиме фишек только когда есть что отменить;
+   - длинные подсказки внизу: после трёх показов прячутся, «?» в углу карты показывает их снова;
+   - крыса в бою молчит (кроме напоминания «твой ход» и победы);
+   - карта мастера при открытии вписана по высоте (широкая таверна на вертикальном телефоне больше не полоска),
+     ⤢ по-прежнему показывает всю карту.
+   ===================================================================== */
+const U713 = { help: false, shown: new Set(), cnt: null, full: false, open: false };
+const HINT713_KEY = 'cr-hint713', HINT713_MIN = 60, HINT713_N = 3;
+
+/* ---------- шапка ---------- */
+const _gmTop713 = gmTop70;
+gmTop70 = function (V) {
+  return _gmTop713.apply(this, arguments)
+    .replace(/<button type="button" class="m70b[^"]*" data-m="grid"[^>]*>#<\/button>/, '')
+    .replace('<i class="m79-t">Окружение</i>', '<i class="m79-t">Стройка</i>');
+};
+
+/* ---------- подсказки: три показа, потом по «?» ---------- */
+function hintCnt713() {
+  if (!U713.cnt) { const o = lsGet(HINT713_KEY); U713.cnt = o && typeof o === 'object' ? o : {}; }
+  return U713.cnt;
+}
+function hintKey713(t) { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(36); }
+const _setHtml713 = setHtml70;
+setHtml70 = function (el, h) {
+  if (el && el.id === 'm70-bar' && typeof h === 'string' && h.indexOf('m70-hint') >= 0) {
+    const C = hintCnt713();
+    h = h.replace(/<p class="m70-hint">([\s\S]*?)<\/p>/g, (all, txt) => {
+      const plain = txt.replace(/<[^>]+>/g, '');
+      if (plain.length < HINT713_MIN) return all;
+      const k = hintKey713(plain); U713.shown.add(k);
+      return (C[k] || 0) >= HINT713_N ? `<p class="m70-hint m713-old">${txt}</p>` : all;
+    });
+  }
+  return _setHtml713.call(this, el, h);
+};
+function hintsSeen713() {
+  if (!U713.shown.size) return;
+  const C = hintCnt713(); U713.shown.forEach(k => { C[k] = Math.min(99, (C[k] || 0) + 1); });
+  U713.shown.clear();
+  const ks = Object.keys(C); if (ks.length > 300) ks.slice(0, ks.length - 300).forEach(k => delete C[k]);
+  lsSet(HINT713_KEY, C);
+}
+function paintQ713() {
+  const st = $('m70-stage'), bar = $('m70-bar'), o = $('map70'); if (!st || !bar) return;
+  let q = st.querySelector('.m713q');
+  if (!q) { q = document.createElement('button'); q.type = 'button'; q.className = 'm70b m713q'; q.dataset.m = 'help713'; q.textContent = '?'; st.appendChild(q); }
+  const any = !!bar.querySelector('.m713-old');
+  q.classList.toggle('hidden', !any); q.classList.toggle('on', U713.help);
+  q.setAttribute('aria-label', U713.help ? 'Спрятать подсказки' : 'Показать подсказки');
+  if (o) o.classList.toggle('m713-help', U713.help);
+}
+
+/* ---------- кнопки в углу, подсказки, после каждой отрисовки ---------- */
+const _paint713 = paint70;
+paint70 = function () {
+  const r = _paint713.apply(this, arguments);
+  if (M70.open) try {
+    const u = document.querySelector('#m70-stage .m79u'), V = M70.V;
+    if (u && V && V.gmv && M70.mode !== 'edit' && !U79.un.length && !U79.re.length) u.classList.add('hidden');   // в фишках — только когда есть что отменить
+    paintQ713();
+  } catch (e) { /* кнопки не должны ронять карту */ }
+  return r;
+};
+const _open713 = openMap70;
+openMap70 = function () { U713.open = true; try { return _open713.apply(this, arguments); } finally { setTimeout(() => { U713.open = false; }, 0); } };
+const _close713 = closeMap70;
+closeMap70 = function () { try { hintsSeen713(); } catch (e) { /* ignore */ } U713.help = false; return _close713.apply(this, arguments); };
+
+/* ---------- вписать по высоте ---------- */
+const _fit713 = fit70;
+fit70 = function (V, focus) {
+  const r = _fit713.apply(this, arguments);
+  try {
+    if (!U713.open || focus || U713.full || !V || document.body.classList.contains('tv76')) return r;
+    U713.open = false;   // только при открытии карты; ⤢ и повторная подгонка — вся карта
+    const v = M70.view, W = v.W, H = v.H, sH = H / (V.h + 1), sW = W / (V.w + 1);
+    if (!(H > W && sH > sW * 1.15)) return r;
+    const s = Math.min(sH, sW * 2), pa = V.toks.filter(t => t.side === 'a' && t.placed);
+    let cx = pa.length ? pa.reduce((a, t) => a + t.x, 0) / pa.length : V.w / 2;
+    const half = W / 2 / s; cx = Math.max(half - 0.5, Math.min(V.w + 0.5 - half, cx));
+    M70.view = { s, x: cx - half, y: V.h / 2 - H / 2 / s, W, H };
+  } catch (e) { /* остаётся вся карта */ }
+  return r;
+};
+
+/* ---------- команды ---------- */
+const _act713 = act70;
+act70 = function (cmd, el) {
+  if (cmd === 'help713') { U713.help = !U713.help; paintQ713(); return; }
+  if (cmd === 'fit') { U713.full = true; try { return _act713.apply(this, arguments); } finally { U713.full = false; } }
+  return _act713.apply(this, arguments);
+};
+
+/* ---------- крыса в бою молчит ---------- */
+const _rat713 = rat92;
+rat92 = function (why, force) {
+  if (!force && why !== 'idle' && why !== 'win') { try { if (ratFight92()) return false; } catch (e) { /* ignore */ } }   // «твой ход» и победа остаются
+  return _rat713.apply(this, arguments);
+};
+
+/* ---------- «осталось N м» прямо словами ---------- */
+const _info713 = info70;
+info70 = function (V) {
+  const s = _info713.apply(this, arguments);
+  try {
+    const m = !V.gmv && /^([\d,.]+) из ([\d,.]+) м/.exec(s);
+    if (m) { const a = parseFloat(m[1].replace(',', '.')), b = parseFloat(m[2].replace(',', '.')); if (Number.isFinite(a) && Number.isFinite(b)) return s.replace(m[0], `${m[0]} · осталось ${num1(Math.max(0, b - a))} м`); }
+  } catch (e) { /* ignore */ }
+  return s;
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
