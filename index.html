@@ -4352,7 +4352,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.29.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.30.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -25695,7 +25695,7 @@ body.q28-m70 .m70-hint,body.q28-chat .chat-hint,body.q28-rest .rest69 .small-not
   });
 })();
 /* =====================================================================
-   ВЫПУСК 7.29 (собран как 7.27, суффикс 727 в именах): ЗОНЫ МЕСТНОСТИ (Андрей 11.10: «игроки должны забегать в лес, и в лесу они хоть немного скрыты»)
+   ВЫПУСК 7.30 (собран как 7.27, суффикс 727 в именах): ЗОНЫ МЕСТНОСТИ (Андрей 11.10: «игроки должны забегать в лес, и в лесу они хоть немного скрыты»)
    Зона — контур с типом поверх любой карты: лес, чаща, трудная местность, болото, снег, мелкая и глубокая вода,
    огонь, лава, кислота, ядовитый газ, мороз, магическая тьма, туман, магия с заметкой мастера.
    Хранится обычным предметом карты вида zn727: x, y, w, h — рамка, i.pts — углы в долях рамки (−0,5…0,5),
