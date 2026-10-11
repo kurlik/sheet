@@ -26120,6 +26120,216 @@ if (typeof awApply725 === 'function') {
 const _open727 = openMap70;
 openMap70 = function () { M727.pd = null; return _open727.apply(this, arguments); };
 /* =====================================================================
+   ВЫПУСК 7.31: ТРАНСФОРМ КОМНАТ — БОЛЬШЕ, МЕНЬШЕ, РАСТЯНУТЬ, ПОВЕРНУТЬ
+   Уже поставленную комнату любой формы (7.9 прямоугольник, 7.10 овал, Г, контур, 7.17 пещера) можно
+   масштабировать, растягивать и поворачивать без пересоздания: кнопками в панели комнаты или ручками на карте
+   (⤡ в углу рамки — больше/меньше с сохранением пропорций, ⟳ над рамкой — поворот с шагом 15°).
+   Всё считается одним аффинным преобразованием F (масштаб от точки, поворот вокруг центра, подгонка под сетку):
+   - сама комната: прямоугольник, овал и Г при повороте на 90° остаются собой (Г поворачивает угол выреза),
+     рамка ложится на сетку 1,5 м; поворот на другой угол превращает фигуру в контур 'poly' (сглаживание
+     пещеры сохраняется); контур, ставший ровным прямоугольником, снова прямоугольник;
+   - вещи внутри (центр в комнате), двери и окна на её стенах, линии 7.11 целиком внутри, зоны 7.30 едут с ней
+     и поворачиваются; при «Больше/Меньше» вещи масштабируются (кнопка «Вещи с комнатой»), при растяжке по одной
+     оси мебель сохраняет размер, а зоны и линии тянутся точно; двери после всего снова встают в ближайший кусок стены;
+   - проёмы (cut79) переносятся на ближайший новый кусок стены этой комнаты;
+   - стены, туман войны, укрытия и движение строятся по контуру комнаты сами, хранить их не нужно.
+   Стены по готовой карте (i.aw725) принадлежат картинке и не двигаются. Фишки не двигаются (это ходы игроков).
+   Один шаг отмены на действие или на одно перетаскивание ручки.
+   ===================================================================== */
+const XF731 = { d: null, it: 1 };   // d — тянем ручку; it — масштабировать вещи вместе с комнатой
+const zn731 = i => typeof isZ727 === 'function' && isZ727(i);
+const isLn731 = i => Array.isArray(i.pts) && !zn731(i);
+const deg731 = a => ((Math.round(a) % 360) + 360) % 360;
+function bbP731(P) {
+  const xs = P.map(p => p[0]), ys = P.map(p => p[1]), x = Math.min(...xs), y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+/* o: {sx, sy, ox, oy} масштаб от точки, {a, cx, cy} поворот в градусах вокруг точки, {tx, ty} сдвиг; fit — подгонка рамки под сетку */
+function mkF731(o, fit) {
+  const t = (o.a || 0) * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+  return p => {
+    let x = o.ox + (p[0] - o.ox) * (o.sx == null ? 1 : o.sx), y = o.oy + (p[1] - o.oy) * (o.sy == null ? 1 : o.sy);
+    const cx = o.cx || 0, cy = o.cy || 0, dx = x - cx, dy = y - cy; x = cx + dx * c - dy * s + (o.tx || 0); y = cy + dx * s + dy * c + (o.ty || 0);
+    if (fit) { x = fit.b.x + (x - fit.a.x) * fit.kx; y = fit.b.y + (y - fit.a.y) * fit.ky; }
+    return [x, y];
+  };
+}
+const isRectP731 = P => P.length === 4 && P.every((p, n) => { const q = P[(n + 1) % 4]; return Math.abs(p[0] - q[0]) < 0.01 || Math.abs(p[1] - q[1]) < 0.01; });
+/* вещи, которые принадлежат комнате: центр внутри, дверь/окно на её стене, линия целиком внутри */
+function owned731(m, P) {
+  return m.items.filter(i => {
+    if (i.aw725) return false;
+    if (isLn731(i)) return i.pts.length && i.pts.every(q => inPoly79(P, { x: +q[0], y: +q[1] }));
+    const p = { x: i.x, y: i.y };
+    return inPoly79(P, p) || (inWall79(i.k) && onEdge79(P, p, 0.3));
+  });
+}
+/* преобразовать комнату со всем, что к ней привязано; false — не влезло (всё возвращено как было) */
+function xf731(r, o, quiet) {
+  const m = gmMap70(), R = rooms79(m), others = R.filter(x => x !== r);
+  const was = JSON.stringify(r), wasIt = JSON.stringify(m.items), wasCut = (m.cut79 || []).slice();
+  const back = msg => { Object.keys(r).forEach(k => delete r[k]); Object.assign(r, JSON.parse(was)); m.items = JSON.parse(wasIt); m.cut79 = wasCut; if (msg && !quiet) toast(msg, 'info'); return false; };
+  const P0 = poly79(r).map(p => [p[0], p[1]]), F0 = mkF731(o), q = deg731(o.a || 0), mn = r.sh === 'l' ? 2 * CELL70 : CELL70;
+  const own = owned731(m, P0);
+  const mine = new Set(segs79([r]).map(s => s.k)), shared = new Set(segs79(others).map(s => s.k));
+  const cuts = (m.cut79 || []).filter(k => mine.has(k) && !shared.has(k));
+  let F = F0;
+  if (r.sh !== 'poly' && q % 90 === 0) {   // прямоугольник, овал, Г: остаются собой, рамка на сетке
+    const B1 = bbP731([[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]].map(F0));
+    const g = v => Math.round(v / CELL70) * CELL70;
+    const B2 = { x: g(B1.x), y: g(B1.y), w: Math.max(mn, g(B1.w)), h: Math.max(mn, g(B1.h)) };
+    const fit = { a: B1, b: B2, kx: B1.w ? B2.w / B1.w : 1, ky: B1.h ? B2.h / B1.h : 1 };
+    F = mkF731(o, fit);
+    if (r.sh === 'l') {
+      let cw = (r.cw || CELL70) * (o.sx == null ? 1 : o.sx), ch = (r.ch || CELL70) * (o.sy == null ? 1 : o.sy);
+      if ((q / 90) % 2) [cw, ch] = [ch, cw];
+      r.c = ((r.c || 0) + q / 90) % 4;
+      r.cw = clamp70(g(cw * fit.kx), CELL70, B2.w - CELL70); r.ch = clamp70(g(ch * fit.ky), CELL70, B2.h - CELL70);
+    }
+    Object.assign(r, { x: r2_70(B2.x), y: r2_70(B2.y), w: r2_70(B2.w), h: r2_70(B2.h) });
+  } else {   // любой угол или контур: точки контура
+    const src = r.sh === 'poly' && Array.isArray(r.pts) && r.pts.length > 2 ? r.pts : P0;
+    const pts = src.map(p => F(p).map(r2_70));
+    if (r.sh !== 'poly') { r.sm = 0; delete r.c; delete r.cw; delete r.ch; }
+    if (!r.sm && isRectP731(pts)) { const b = bbP731(pts); r.sh = 'rect'; delete r.pts; Object.assign(r, { x: r2_70(b.x), y: r2_70(b.y), w: r2_70(b.w), h: r2_70(b.h) }); }
+    else { r.sh = 'poly'; r.pts = pts; Object.assign(r, bb710(poly79(r))); }
+  }
+  const B = bbP731(poly79(r));
+  if (B.x < -0.01 || B.y < -0.01 || B.x + B.w > m.w + 0.01 || B.y + B.h > m.h + 0.01) return back('Дальше нельзя: комната вылезает за край карты.');
+  if (B.w < mn - 0.01 || B.h < mn - 0.01) return back(r.sh === 'l' ? 'Меньше нельзя: Г-образная — от 2 клеток.' : 'Меньше нельзя: комната — хотя бы клетка.');
+  // линейная часть F: как поворачиваются и тянутся оси вещей
+  const z0 = F([0, 0]), z1 = F([1, 0]), z2 = F([0, 1]);
+  const L = (u, v) => [(z1[0] - z0[0]) * u + (z2[0] - z0[0]) * v, (z1[1] - z0[1]) * u + (z2[1] - z0[1]) * v];
+  const uni = Math.abs((o.sx == null ? 1 : o.sx) - (o.sy == null ? 1 : o.sy)) < 0.001;   // растяжка по одной оси мебель не тянет
+  own.forEach(i => {
+    const p = F([i.x, i.y]); i.x = r2_70(p[0]); i.y = r2_70(p[1]);
+    if (isLn731(i)) { i.pts = i.pts.map(q => F([+q[0], +q[1]]).map(r2_70)); return; }
+    const t = (i.r || 0) * Math.PI / 180, U = L(Math.cos(t), Math.sin(t)), W = L(-Math.sin(t), Math.cos(t)), ku = Math.hypot(...U), kv = Math.hypot(...W);
+    i.r = deg731(Math.atan2(U[1], U[0]) * 180 / Math.PI);
+    if (inWall79(i.k)) return;   // дверь — ширина по стене, ниже
+    if (zn731(i)) { i.w = r2_70(i.w * ku); i.h = r2_70(i.h * kv); }
+    else if (XF731.it && uni) { const k = Math.sqrt(ku * kv); i.w = r2_70(Math.max(0.1, i.w * k)); i.h = r2_70(Math.max(0.1, i.h * k)); }
+  });
+  // проёмы и двери — на новые куски стены этой комнаты
+  const fresh = segs79([r]);
+  const near = pt => { let best = null, bd = CELL70 * 0.6; fresh.forEach(s => { const d = segD79(pt, s.a, s.b); if (d < bd) { bd = d; best = s; } }); return best; };
+  m.cut79 = m.cut79.filter(k => !cuts.includes(k));
+  cuts.forEach(k => { const v = k.split(',').map(Number), a = F([v[0], v[1]]), b = F([v[2], v[3]]), s = near({ x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 }); if (s && !m.cut79.includes(s.k)) m.cut79.push(s.k); });
+  const V = gmView70();
+  own.forEach(i => { if (inWall79(i.k)) stick79(V, i); });
+  const all = new Set(segs79(R).map(s => s.k)); m.cut79 = m.cut79.filter(k => all.has(k));
+  return true;
+}
+const rect731 = r => bbP731(poly79(r));
+/* кнопки: шаг масштаба — клетка по длинной стороне */
+function zoom731(r, dir) {
+  const b = rect731(r), big = Math.max(b.w, b.h), k = Math.max(0.05, (big + dir * CELL70) / big);
+  return xf731(r, { sx: k, sy: k, ox: b.x + b.w / 2, oy: b.y + b.h / 2, a: 0, cx: 0, cy: 0 });
+}
+function turn731(r, a) {
+  const b = rect731(r);
+  return xf731(r, { sx: 1, sy: 1, ox: 0, oy: 0, a, cx: b.x + b.w / 2, cy: b.y + b.h / 2 });
+}
+/* «Уже/Шире/Короче/Длиннее» и стрелки (7.9) — теперь для любых форм и через xf731: линии и проёмы едут тоже */
+moveRoom79 = function (r, dx, dy, dw, dh) {
+  const b = rect731(r), sx = b.w ? (b.w + (dw || 0)) / b.w : 1, sy = b.h ? (b.h + (dh || 0)) / b.h : 1;
+  if (sx <= 0.05 || sy <= 0.05) { toast('Меньше нельзя: комната — хотя бы клетка.', 'info'); return; }
+  if (xf731(r, { sx, sy, ox: b.x, oy: b.y, tx: dx || 0, ty: dy || 0 })) gmSave();
+};
+
+/* ---------- панель комнаты: ряд трансформа ---------- */
+const _rb731 = roomBar79;
+roomBar79 = function (V) {
+  const h = _rb731(V), r = (V.rm79 || []).find(x => x.id === R79.sel); if (!h || !r) return h;
+  const c = (m, v, t, l) => `<button type="button" class="m70chip" data-m="${m}" data-v="${v}" aria-label="${l}">${t}</button>`;
+  let row = c('zm731', 1, '⤢ Больше', 'Больше') + c('zm731', -1, '⤡ Меньше', 'Меньше') + c('rt731', -90, '↺ 90°', 'Повернуть против часовой на 90°')
+    + c('rt731', 90, '↻ 90°', 'Повернуть по часовой на 90°') + c('rt731', -15, '↺ 15°', 'Повернуть против часовой на 15°') + c('rt731', 15, '↻ 15°', 'Повернуть по часовой на 15°');
+  if (r.sh === 'poly') row += c('mv79', '0,0,-1,0', 'Уже', 'Уже') + c('mv79', '0,0,1,0', 'Шире', 'Шире') + c('mv79', '0,0,0,-1', 'Короче', 'Короче') + c('mv79', '0,0,0,1', 'Длиннее', 'Длиннее');
+  row += chip75('it731', 1, '📦 Вещи с комнатой', !!XF731.it);
+  const at = h.indexOf('</div>');
+  return at < 0 ? h : h.slice(0, at + 6) + `<div class="m70-scroll m731">${row}</div><p class="m70-hint m731-tip">Ручки на карте: ⤡ в углу — больше/меньше, ⟳ сверху — повернуть.</p>` + h.slice(at + 6);
+};
+const _act731 = act70;
+act70 = function (cmd, b) {
+  const v = b && b.dataset ? b.dataset.v : '';
+  const r = R79.sel && rooms79(gmMap70()).find(x => x.id === R79.sel);
+  switch (cmd) {
+    case 'zm731': if (r && zoom731(r, +v > 0 ? 1 : -1)) gmSave(); paint70(); return;
+    case 'rt731': if (r && turn731(r, +v || 0)) gmSave(); paint70(); return;
+    case 'it731': XF731.it = XF731.it ? 0 : 1; paint70(); return;
+  }
+  return _act731(cmd, b);
+};
+
+/* ---------- ручки на карте ---------- */
+function hd731(V) {
+  if (!V || !V.gmv || M70.mode !== 'edit' || !R79.sel || M70.selItem || !M70.view || (typeof R77 !== 'undefined' && R77.rv)) return null;
+  const r = (V.rm79 || []).find(x => x.id === R79.sel); if (!r) return null;
+  const b = rect731(r), s = M70.view.s, rr = 17 / s;
+  return { b, cx: b.x + b.w / 2, cy: b.y + b.h / 2, sc: { x: b.x + b.w + 12 / s, y: b.y + b.h + 12 / s }, ro: { x: b.x + b.w / 2, y: b.y - 34 / s }, r: rr };
+}
+const _svg731 = svg70;
+svg70 = function (V) {
+  let s = _svg731.apply(this, arguments);
+  const H = hd731(V); if (!H) return s;
+  const k = 1 / M70.view.s, b = H.b, sw = r2_70(2.2 * k), R = r2_70(H.r);
+  s += `<g class="m731h" pointer-events="none"><rect x="${r2_70(b.x)}" y="${r2_70(b.y)}" width="${r2_70(b.w)}" height="${r2_70(b.h)}" fill="none" stroke="#e0bd6e" stroke-width="${r2_70(1.4 * k)}" stroke-dasharray="${r2_70(5 * k)} ${r2_70(4 * k)}" opacity=".7"/>
+    <line x1="${r2_70(H.ro.x)}" y1="${r2_70(H.ro.y + H.r)}" x2="${r2_70(H.ro.x)}" y2="${r2_70(b.y)}" stroke="#e0bd6e" stroke-width="${sw}" opacity=".7"/>
+    <circle cx="${r2_70(H.sc.x)}" cy="${r2_70(H.sc.y)}" r="${R}" fill="rgba(16,19,27,.88)" stroke="#e0bd6e" stroke-width="${sw}"/>
+    <text x="${r2_70(H.sc.x)}" y="${r2_70(H.sc.y)}" font-size="${r2_70(20 * k)}" fill="#f1dfae" text-anchor="middle" dominant-baseline="central">⤡</text>
+    <circle cx="${r2_70(H.ro.x)}" cy="${r2_70(H.ro.y)}" r="${R}" fill="rgba(16,19,27,.88)" stroke="#5fd0c4" stroke-width="${sw}"/>
+    <text x="${r2_70(H.ro.x)}" y="${r2_70(H.ro.y)}" font-size="${r2_70(20 * k)}" fill="#bff0ea" text-anchor="middle" dominant-baseline="central">⟳</text></g>`;
+  return s;
+};
+function snap731(r) { return { r: JSON.stringify(r), it: JSON.stringify(gmMap70().items), cut: JSON.stringify(gmMap70().cut79 || []) }; }
+function back731(r, S) { const m = gmMap70(); Object.keys(r).forEach(k => delete r[k]); Object.assign(r, JSON.parse(S.r)); m.items = JSON.parse(S.it); m.cut79 = JSON.parse(S.cut); }
+const _down731 = down70;
+down70 = function (e) {
+  const r0 = _down731.apply(this, arguments), V = M70.V;
+  XF731.d = null;
+  if (M70.ptrs.size !== 1 || !M70.g) return r0;
+  const H = hd731(V); if (!H) return r0;
+  const p = M70.g.p, near = (q) => Math.hypot(p.x - q.x, p.y - q.y) <= H.r * 1.5;
+  const kind = near(H.sc) ? 'sc' : near(H.ro) ? 'ro' : null; if (!kind) return r0;
+  const r = rooms79(gmMap70()).find(x => x.id === R79.sel); if (!r) return r0;
+  if (typeof R79 !== 'undefined') R79.d = null;
+  M70.drag = null;
+  XF731.d = { kind, id: r.id, S: snap731(r), cx: H.cx, cy: H.cy, d0: Math.max(0.3, Math.hypot(p.x - H.cx, p.y - H.cy)), a0: Math.atan2(p.y - H.cy, p.x - H.cx), v: kind === 'sc' ? 1 : 0, moved: false };
+  return r0;
+};
+const _move731 = move70;
+move70 = function (e) {
+  const D = XF731.d;
+  if (D && M70.ptrs.has(e.pointerId)) {
+    if (M70.ptrs.size !== 1) { const r = rooms79(gmMap70()).find(x => x.id === D.id); if (r) back731(r, D.S); XF731.d = null; return _move731.apply(this, arguments); }
+    M70.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = M70.g; if (!g) return;
+    if (!g.moved && Math.hypot(e.clientX - g.sx, e.clientY - g.sy) < 7) return;
+    g.moved = true; D.moved = true;
+    const p = toMap70(e), r = rooms79(gmMap70()).find(x => x.id === D.id); if (!r) { XF731.d = null; return; }
+    let v;
+    if (D.kind === 'sc') v = Math.round(Math.max(0.2, Math.hypot(p.x - D.cx, p.y - D.cy) / D.d0) * 20) / 20;
+    else v = Math.round(((Math.atan2(p.y - D.cy, p.x - D.cx) - D.a0) * 180 / Math.PI) / 15) * 15;
+    if (v === D.v) return;
+    back731(r, D.S);
+    const ok = D.kind === 'sc' ? xf731(r, { sx: v, sy: v, ox: D.cx, oy: D.cy, a: 0, cx: 0, cy: 0 }, true) : xf731(r, { sx: 1, sy: 1, ox: 0, oy: 0, a: v, cx: D.cx, cy: D.cy }, true);
+    if (ok) D.v = v;
+    else { back731(r, D.S); if (D.v !== (D.kind === 'sc' ? 1 : 0)) (D.kind === 'sc' ? xf731(r, { sx: D.v, sy: D.v, ox: D.cx, oy: D.cy, a: 0, cx: 0, cy: 0 }, true) : xf731(r, { sx: 1, sy: 1, ox: 0, oy: 0, a: D.v, cx: D.cx, cy: D.cy }, true)); }
+    paintSoon70(); return;
+  }
+  return _move731.apply(this, arguments);
+};
+const _up731 = up70;
+up70 = function (e) {
+  const D = XF731.d;
+  if (D && M70.ptrs.has(e.pointerId)) {
+    XF731.d = null; M70.ptrs.delete(e.pointerId); M70.g = null; M70.drag = null;
+    if (D.moved && D.v !== (D.kind === 'sc' ? 1 : 0)) gmSave();
+    paint70(); return;
+  }
+  return _up731.apply(this, arguments);
+};
+/* =====================================================================
    ВЫПУСК 7.32: СУНДУКИ, ЗАМКИ И ВЗЛОМ
    Контейнер = сундук, ящик и сундуки/ящики из каталога, плюс любой низкий предмет, который мастер отметил «📦 Контейнер» (w74.cn).
    Мастер в «Стройке» задаёт содержимое: из каталога предметов (поиск), своё по названию, монеты, ключи от замков этой карты,
