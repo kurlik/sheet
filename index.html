@@ -1353,6 +1353,13 @@ body.map70-on .toast{pointer-events:none}
 .m723-it span{font-size:12px;line-height:1.2}
 .m723-it small{font-size:10.5px;color:#9fb0c6}
 .m723-it.on{border-color:#e0bd6e;box-shadow:0 0 0 1px #e0bd6e inset}
+/* 7.24: этажи карты */
+.m724{position:absolute;right:8px;top:8px;z-index:6;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:4px;background:rgba(10,14,22,.84);border:1px solid #3a4658;border-radius:12px;max-width:46%}
+.m724.hidden{display:none}
+.m724 .m70b{position:relative;min-width:40px}
+.m724 .m70b i{position:absolute;right:-4px;top:-5px;font-style:normal;font-size:10px;line-height:15px;min-width:15px;padding:0 3px;border-radius:8px;background:#2a6f68;color:#e9fffb}
+.m724-nm{font:600 12px/1.2 inherit;color:#e0bd6e;background:none;border:0;padding:2px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m724 .m724-go{font-size:12px;white-space:nowrap;border-color:#5fd0c3;color:#bff3ec}
 </style>
 </head>
 <body>
@@ -4345,7 +4352,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.23.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.24.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -18518,7 +18525,7 @@ const MAP_CAT75 = {
   masks: [["single",0],["end",270],["end",0],["corner",270],["end",90],["straight",90],["corner",0],["tee",270],["end",180],["corner",180],["straight",0],["tee",180],["corner",90],["tee",90],["tee",0],["cross",0]],
   walls: [["dungeon-wall","Стена подземелья",0,0.52,{"single":"b0090e6233e2","end":"7308a745c24f","straight":"70b43334a68f","corner":"ae164d6c73fa","tee":"844ca5e6994d","cross":"d7d9400dea32"}],["dungeon-hall","Коридор подземелья",1,1.5,{"single":"27873cb2ba8c","end":"c32852dcfda4","straight":"99412baaab6a","corner":"1450224bc347","tee":"1de73283afd4","cross":"93c3944fada2"}],["cave-wall","Стена пещеры",0,0.7,{"m0":"ee11e448253d","m1":"a6cc08049ea3","m2":"4f864189fc8f","m4":"69d926326ac3","m8":"67eab14e4406","m5":"1ea2b926ced4","m10":"2af1704abe92","m9":"410030b98005","m3":"041a2c2ebb29","m7":"db3820929436","m13":"a9347823745d","m6":"cb9c4b3355ea","m12":"64d0c8fdc41d","m14":"5cb2f9c12c11","m11":"9a5559d0f92f","m15":"ca969c216d10","straight":"2af1704abe92"}]],
   surf: {"groups":{"wood":"Дерево","stone":"Камень и плитка","dungeon":"Плиты подземелья","cave":"Пещерные породы","ground":"Грунт","tile":"Плитка и кирпич","nature":"Трава, снег, песок","water":"Вода"},"items":[["oak-planks","Дубовые доски","wood",0,0.55,"22f96c22816c","273db4625d43"],["rough-deck","Грубый настил","wood",0,0.55,"07e57416bade","66de1b8fc76c"],["wood-deck","Деревянный настил","wood",0,0.55,"a08efd7a76c8","e94d5372e69c"],["hearth-stone","Камень у очага","stone",0,0.55,"4e3d3f31345b","2d6c0f9448db"],["cellar-cobble","Погребной булыжник","stone",0,0.55,"551776ecd250","556fe017a770"],["kitchen-tile","Кухонная плитка","stone",0,0.55,"4a8c5fa3b72b","2325ca9eb8ee"],["worn-carpet","Потёртый ковёр","stone",0,0.55,"19d22a0bf702","1d633229dbfc"],["cobble-tile","Булыжная мостовая","stone",0,0.55,"2dfa81cfdc86","b22ae1d861e8"],["dungeon-slabs","Плиты подземелья","dungeon",0,0.55,"db617f36028b","54bf7db9226b"],["tile-cracked","Треснувшая плита","dungeon",0,0.55,"1c53a4fda8df","46cb5bafdc7e"],["tile-mossy","Мшистая плита","dungeon",0,0.55,"f24b3913d2c7","c78990682ca9"],["tile-bloody","Плита в крови","dungeon",0,0.55,"3acff928c244","139108ddfbca"],["tile-mud","Грязный пол","dungeon",1,0.55,"8b638549f561","a8757af5de86"],["tile-bones","Пол с костями","dungeon",0,0.55,"07c08ad0d59a","0b50c7633090"],["tile-flooded","Затопленная плита","dungeon",1,0.55,"0c3c99d15612","982559c8a38e"],["tile-ice","Ледяная плита","dungeon",1,0.55,"b69e920708f2","5e09c08c7c21"],["tile-sand","Песчаный пол","dungeon",0,0.55,"d689f3bf5d7c","c5ab51f8f19d"],["tile-stone","Каменная плита","dungeon",0,0.55,"689fb113b315","4bac2a6a0781"],["slate","Скалистый сланец","cave",0,0.55,"94e4a136cbe0","1e9e5d3463e3"],["scree","Каменная осыпь","cave",1,0.55,"5aac3239a1b5","ad3040c8f546"],["cave-mud","Подземная грязь","cave",1,0.55,"a36bac303f90","bba1e9549a1c"],["ore-rock","Рудная порода","cave",0,0.55,"92a588641976","033b59964d7a"],["cave-water","Подземная вода","cave",1,0.55,"6c6b3285334f","cef723c8e29b"],["cracked-rock","Треснувшая порода","cave",0,0.55,"0b57da59b978","41e04992fc53"],["dirt","Утоптанная земля","ground",0,0.55,"702836808bd5","591e227c3f94"],["dead-leaves","Опавшие листья","ground",0,0.55,"24909fc552e1","93551b03a83a"],["cobble-hewn","Тёсаный булыжник","stone",0,0.55,"72073dcdc132","271c1dfc29cd"],["sandstone-slabs","Песчаниковые плиты","stone",0,0.55,"86c5ba72cb6e","54bbc7863424"],["cobble-fan","Мостовая веером","stone",0,0.55,"65fbd681d3bb","441a070aad00"],["flagstone","Плитняк","stone",0,0.55,"f953ca52fd7a","e48d4841eabe"],["flagstone-moss","Мшистый плитняк","stone",0,0.55,"fc52f86c1f08","454ed26196a0"],["pebble-paving","Галечная мостовая","stone",0,0.55,"9baaac5df527","dd428b17a09b"],["brick-red","Красный кирпич","tile",0,0.55,"05bb69cc69c5","25d9dc1ed2dd"],["brick-herring","Кирпич ёлочкой","tile",0,0.55,"7d7922478456","f8a0bcdd5601"],["marble","Мрамор","tile",0,0.55,"41645473602d","e36fd4bcd7aa"],["checker-diag","Шахматная плитка","tile",0,0.55,"d8e0328cf3e1","b1ab6906a611"],["azulejo","Изразцы","tile",0,0.55,"5ac1c2742a0a","bd20c526fd0d"],["terracotta","Терракота","tile",0,0.55,"a21a63e14c61","2f40f5ab3a88"],["tile-black","Чёрная плитка","tile",0,0.55,"3ae4c6e197f7","49b0acbe204f"],["tile-teal","Бирюзовая плитка","tile",0,0.55,"619c6a1aae51","d5164735f540"],["mosaic-floor","Мозаичный пол","tile",0,0.55,"550778a707b2","15d9d8766c79"],["floorboards","Половицы","wood",0,0.55,"2d9bf1ecd117","f94701cb06b9"],["parquet","Паркет ёлочкой","wood",0,0.55,"075d98cdf9cc","832d081e60fa"],["planks-dark","Тёмные доски","wood",0,0.55,"947b68102940","6f2cc78f0c82"],["planks-rough","Грубые доски (штамп)","wood",0,0.55,"26c72ceaea02","26c72ceaea02",2,"x"],["planks-broken","Ломаные доски (штамп)","wood",1,0.55,"1f2172fad677","1f2172fad677",2,"x"],["earth","Земля","ground",0,0.55,"54b07317c355","57314abcace0",1],["earth-stones","Земля с камнями","ground",0,0.55,"7e2185225638","1563810a979a",1],["earth-cracked","Потрескавшаяся земля","ground",0,0.55,"5d8c10363daa","6930a39aff38",1],["gravel","Щебёнка","ground",0,0.55,"a5eac3c31188","a6f6cf30b086",1],["rocks-moss","Камни во мху","ground",1,0.55,"72bd59ec84bb","765b4ea0e1fd",1],["cobble-broken","Разбитая брусчатка","ground",1,0.55,"909f7fd3dc62","75e8a6a81909",1],["ash","Пепел","ground",0,0.55,"5fb7afed3fef","77a9b04099c7",1],["straw","Солома","ground",0,0.55,"43b62f9ba6a7","18269ac5a36b",1],["lava-crust","Застывающая лава","cave",1,0.55,"43a0710359f4","03a95732982a"],["grass","Трава","nature",0,0.55,"7998a86b4ed0","99310f30ffb2",1],["grass-patchy","Трава с проплешинами","nature",0,0.55,"ab3099808d71","be909223f666",1],["grass-stony","Каменистая трава","nature",0,0.55,"48fea47c9bf0","2b4c24eefadd",1],["forest-floor","Лесная подстилка","nature",0,0.55,"fa58ad0867a8","ec1da3303576",1],["leaves-autumn","Осенняя листва","nature",0,0.55,"66bdd4ff28ae","1d773451c9a5",1],["sand","Песок","nature",0,0.55,"d7ee96c06875","8ef42747b644",1],["snow","Снег","nature",1,0.55,"07cc753de9cd","26330d962927",1],["snow-patchy","Снег с проталинами","nature",1,0.55,"7b7a6c1fb1c5","88ef9ce91bc6",1],["ice","Лёд","nature",1,0.55,"c605083050de","c9cbb2cbe96a"],["water-calm","Вода","water",1,0.55,"d15406671679","5803fa60c7c6",1],["water-deep","Глубокая вода","water",1,0.55,"8cb0a5733f09","615a31826665",1],["water-shallow","Мелководье","water",1,0.55,"ee3aacdb7896","a45cc695b17d",1],["water-dark","Тёмная глубь","water",1,0.55,"b75f6f625220","091be18d3768",1],["water-waves","Волны","water",1,0.55,"d617c161a3cd","ec296de02598",1],["water-surf","Прибой","water",1,0.55,"2fdc750792a5","a4b09d572df0",1],["dust","Пыльная земля","ground",0,0.55,"c5f34e478721","a75886aede9f"],["lava-veins","Лава, частые жилы","cave",1,0.55,"228ff0fe8fb7","1da4ead93c69"],["lava-rift","Лава, разломы","cave",1,0.55,"e2ae53a6465f","50b1869a437d"],["sand-shore","Песок берега","ground",0,0.55,"e13a13d8e3a5","b422958c804f"],["swamp-glow","Болото, топь","ground",1,0.55,"3e38a5ca5761","94a8ec3df506"],["cave-mass","Толща скалы, тёмная","cave",0,0.55,"3a3c42cac8d5","87c97d45f739"],["rock-mass","Скала бурая, глыбы","cave",0,0.55,"b05408fda4d5","dbd8c2c6b6a7"],["ice-mass","Лёд, глыбы","cave",1,0.55,"8ebf8ad5b5ce","2d982eec8e9b"],["cave-plates","Пол пещеры, плиты","cave",0,0.55,"955dfa8d4d63","09b9bbdd1687"],["cave-grit","Пол пещеры, щебень","cave",0,0.55,"663f7c330f3a","a0e39e44ae24"],["meadow-flowers","Луг с цветами","nature",0,0.55,"d07df645d342","474a51357efe"],["moss-roots","Мох и корни","nature",1,0.55,"e0dfc8f436ce","ef16e922f115"],["tundra-frost","Тундра, иней","nature",0,0.55,"e94ddc920d1c","28e863fe7a24"],["desert-hardpan","Пустыня, такыр","nature",0,0.55,"4122e1403eb3","3586abd8ec0a"],["mud-ruts","Грязь, колеи","ground",1,0.55,"140c3a5e92c9","60082c0cfc57"],["blight","Скверна","ground",0,0.55,"3f7ad325fcef","35d033a43230"],["fungal-floor","Грибы подземья","cave",0,0.55,"bc6293a51eea","0edeb4f6afbc"],["crystal-floor","Кристальный пол","cave",0,0.55,"b7b008579687","af9dfe100565"],["obsidian-ash","Обсидиан и пепел","cave",0,0.55,"fbf3a73fb9eb","7dc53be08225"],["ruins-slabs","Руины, битые плиты","stone",1,0.55,"1f24b0c67805","fac3a9a18816"],["roof-tiles","Крыша, черепица","tile",0,0.55,"f9554f611c52","a1420b34098b"]]},
-  maps: {"groups":{"d":"Подземелья и помещения","n":"Местность"},"items":[["kripta","Крипта гномов","d","52050d28082d","4ee8e7cd8cee",24,43.0],["katakomby","Затопленные катакомбы","d","cef07f0e0e5b","2c140c5b3dce",24,24.0],["hram","Храм культа","d","6dafbee8f36c","3f1826fa2e6f",21,37.5],["tyurma","Тюрьма замка","d","f1ec46c3585b","4da9b3e92459",30,16.5],["peshchera","Пещера-змейка","d","345db8fcdd05","1b3e311fa9af",24,43.0],["goblin","Лагерь гоблинов в пещере","d","d611a6fbc975","b7eff209f8c5",36,20.0],["shahta","Шахта гномов","d","376a0704a8be","4c5a35fee136",36,20.0],["drakon","Логово дракона","d","7b11a792db0b","6f34d63ac4bf",36,20.0],["taverna","Таверна ночью","d","3af3cff2a39c","c9ad020f6856",30,16.5],["korabl","Палуба корабля","d","46a4117c19b5","2ad43c694729",15,27.0],["les","Лесной перекрёсток","n","adadd1c70fdd","c7ab66abe451",30,54.0],["bandity","Лагерь бандитов","n","bf778b9a48ff","6deedab27a2b",36,20.0],["derevnya","Деревня","n","36f5ed6e5614","ebfe16c26e61",60,33.5],["ruiny","Руины замка","n","91a43e41530f","e5f277b449d6",36,36.0],["kladbishche","Кладбище у часовни","n","09baa054bdd7","930aed230353",24,24.0],["boloto","Болотный хутор","n","e6e4d78c4841","d6e59ca0eeae",36,20.0],["pereval","Горный перевал","n","59fd1b7cbb8b","9670254de9e1",30,54.0],["oazis","Оазис в пустыне","n","84d58f0a02e9","055caf76e519",40,22.5],["gavan","Гавань","n","d48dd74f873a","79c9b6b6fcc6",40,22.5],["zima","Зимний лагерь","n","3c57f5d669e8","3ce538a07750",36,20.0]]}
+  maps: {"groups":{"d":"Подземелья и помещения","n":"Местность"},"items":[["kripta","Крипта гномов","d","52050d28082d","4ee8e7cd8cee",24,43.0],["katakomby","Затопленные катакомбы","d","cef07f0e0e5b","2c140c5b3dce",24,24.0],["hram","Храм культа","d","6dafbee8f36c","3f1826fa2e6f",21,37.5],["tyurma","Тюрьма замка","d","f1ec46c3585b","4da9b3e92459",30,16.5],["peshchera","Пещера-змейка","d","345db8fcdd05","1b3e311fa9af",24,43.0],["goblin","Лагерь гоблинов в пещере","d","d611a6fbc975","b7eff209f8c5",36,20.0],["shahta","Шахта гномов","d","376a0704a8be","4c5a35fee136",36,20.0],["drakon","Логово дракона","d","7b11a792db0b","6f34d63ac4bf",36,20.0],["taverna","Таверна ночью","d","3af3cff2a39c","c9ad020f6856",30,16.5],["korabl","Палуба корабля","d","46a4117c19b5","2ad43c694729",15,27.0],["les","Лесной перекрёсток","n","adadd1c70fdd","c7ab66abe451",30,54.0],["bandity","Лагерь бандитов","n","bf778b9a48ff","6deedab27a2b",36,20.0],["derevnya","Деревня","n","36f5ed6e5614","ebfe16c26e61",60,33.5],["ruiny","Руины замка","n","91a43e41530f","e5f277b449d6",36,36.0],["kladbishche","Кладбище у часовни","n","09baa054bdd7","930aed230353",24,24.0],["boloto","Болотный хутор","n","e6e4d78c4841","d6e59ca0eeae",36,20.0],["pereval","Горный перевал","n","59fd1b7cbb8b","9670254de9e1",30,54.0],["oazis","Оазис в пустыне","n","84d58f0a02e9","055caf76e519",40,22.5],["gavan","Гавань","n","d48dd74f873a","79c9b6b6fcc6",40,22.5],["zima","Зимний лагерь","n","3c57f5d669e8","3ce538a07750",36,20.0],["taverna-2","Таверна, 2 этаж","d","8389e24049f4","2c98b216eae2",30,16.5,"taverna",1],["taverna-p","Таверна, погреб","d","c97992738870","453e8f703df4",30,16.5,"taverna",-1],["tyurma-v","Тюрьма, казармы стражи (верх)","d","ed969636759f","92a5e2131921",30,16.5,"tyurma",1],["tyurma-n","Тюрьма, казематы","d","c7dd5f949eed","0f896442247e",30,16.5,"tyurma",-1],["shahta-n","Шахта, нижний ярус","d","fcc8a03917a5","ef05b3ea3c2f",36,20.0,"shahta",-1],["korabl-tr","Корабль, трюм","d","2c2cdc721989","70466970b0e5",15,27.0,"korabl",-1],["ruiny-b","Руины, верх башни","n","0e9dcb35bfe7","233e61748763",11,11,"ruiny",1]]}
 };
 /* =====================================================================
    ВЫПУСК 7.5: АССЕТЫ И АВТОТАЙЛЫ
@@ -25036,6 +25043,455 @@ const _act723 = act70;
 act70 = function (cmd, b) {
   if (cmd === 'lib723') { if (appRole() === 'gm') libSet723(b && b.dataset ? b.dataset.v : ''); return; }
   return _act723.apply(this, arguments);
+};
+/* =====================================================================
+   ВЫПУСК 7.24: ЭТАЖИ КАРТЫ (погреба, вторые этажи, трюмы)
+   Этаж — целая карта мастера (gm.map со всеми полями прежних выпусков). Текущий лежит в gm.map, остальные в
+   gm.lv724 = { z, st: { <z>: карта }, nm: { <z>: имя } }; z: 0 основной, 1 второй этаж, −1 подвал. Пока мастер не
+   добавил этажей, всё как раньше. Чужой этаж обрабатывается подменой gm.map (inLv724): так стены, туман, разведка 7.13,
+   спрятанные враги и всё прочее считаются теми же функциями, что и для текущего.
+   Лестницы: предметы «Лестница вверх/вниз» (stu724/std724) ставятся парой с общим i.pr724 — вторая появляется на
+   соседнем этаже в той же точке (этажа нет — создаётся). На готовых картах 7.23 пары расставлены по картинкам (LVLIB724).
+   Игроку уходит только его этаж: public/map = этаж мастера (с d.z, d.lvs, d.pt724 — куда ведут лестницы), прочие этажи —
+   public/lv724/z<N> тем же pubData70. У игрока onLive подменяет public.map на его этаж, поэтому весь код карты видит один
+   этаж. Свой этаж игрок знает по самой свежей отметке своей фишки (mv.z724 и tk[2] на этажах), в pos уходит z.
+   Бой принадлежит участникам: «Начать бой» берёт только тех, кто на этаже мастера (и кто не на карте вовсе); игрок вне
+   очереди бой не видит (partyView без vc), ушедший по лестнице из боя остаётся в очереди; пришедший на этаж, где идёт бой,
+   встаёт в очередь с броском инициативы сам.
+   ===================================================================== */
+const LV724 = { sw: 0, pend: false, pubJs: '', pubT: null, orig: null, toast: '' };
+/* готовые карты: пары лестниц по картинкам [z, x, y, z2, x2, y2] (этажи — записи каталога с up/z) */
+const LVLIB724 = {
+  taverna: [[0, 10.8, 9.6, 1, 10.8, 9.6], [0, 8.3, 9.6, -1, 8.3, 9.6]],
+  tyurma: [[0, 9.4, 12.4, 1, 9.4, 12.4], [0, 9.9, 13.7, -1, 9.9, 13.7]],
+  shahta: [[0, 18, 9.6, -1, 18, 9.6]],
+  korabl: [[0, 7.5, 15.8, -1, 5.5, 18.8], [0, 7.5, 22.4, -1, 9.8, 19.3]],
+  ruiny: [[0, 4.2, 18.6, 1, 3.1, 5.6]]
+};
+const STAIR724 = (up) => `<circle cx="50" cy="50" r="45" fill="#141c29" fill-opacity=".86" stroke="#e0bd6e" stroke-width="6"/>`
+  + `<path d="M24 74H40V61H54V48H68V35H78" fill="none" stroke="#e0bd6e" stroke-width="7" stroke-linejoin="round"/>`
+  + (up ? '<path d="M30 46L46 26L62 46Z" fill="#5fd0c3"/>' : '<path d="M30 26L46 46L62 26Z" fill="#5fd0c3"/>');
+Object.assign(MAP_ASSETS70, {
+  stu724: { n: 'Лестница вверх (на этаж)', w: 1.5, h: 1.5, floor: 1, lv724: 1, svg: STAIR724(true) },
+  std724: { n: 'Лестница вниз (на этаж)', w: 1.5, h: 1.5, floor: 1, lv724: -1, svg: STAIR724(false) }
+});
+MAP_PAL70.splice(MAP_PAL70.indexOf('hatch') >= 0 ? MAP_PAL70.indexOf('hatch') + 1 : MAP_PAL70.length, 0, 'stu724', 'std724');
+const isStair724 = i => !!(i && MAP_ASSETS70[i.k] && MAP_ASSETS70[i.k].lv724);
+const lvAuto724 = z => z === 0 ? 'Основной этаж' : z > 0 ? `${z + 1} этаж` : z === -1 ? 'Подвал' : `Подвал ${-z}`;
+
+/* ---------- мастер: этажи ---------- */
+function lv724() {
+  if (!gm.lv724 || typeof gm.lv724 !== 'object') gm.lv724 = { z: 0, st: {}, nm: {} };
+  const L = gm.lv724;
+  if (!L.st || typeof L.st !== 'object') L.st = {};
+  if (!L.nm || typeof L.nm !== 'object') L.nm = {};
+  L.z = Number.isFinite(+L.z) ? +L.z : 0;
+  if (!LV724.sw) delete L.st[L.z];   // после перезагрузки посреди подмены — текущий этаж только в gm.map
+  return L;
+}
+const hasLv724 = () => !!(gm.lv724 && gm.lv724.st && Object.keys(gm.lv724.st).length);
+const zs724 = () => { const L = lv724(); return [L.z].concat(Object.keys(L.st).map(Number)).filter((z, i, a) => a.indexOf(z) === i).sort((a, b) => a - b); };
+const mapAt724 = z => { const L = lv724(); return z === L.z ? gmMap70() : L.st[z] || null; };
+const lvTitle724 = z => (gm.lv724 && gm.lv724.nm && gm.lv724.nm[z]) || lvAuto724(z);
+/* выполнить fn так, будто мастер стоит на этаже z */
+function inLv724(z, fn) {
+  const L = lv724(), cur = L.z;
+  if (z === cur) return fn();
+  const mp = L.st[z]; if (!mp) return undefined;
+  const keep = gmMap70();
+  L.st[cur] = keep; gm.map = mp; L.z = z; LV724.sw++;
+  try { return fn(); } finally {
+    LV724.sw--; L.st[z] = gm.map; gm.map = keep; L.z = cur; delete L.st[cur];
+    if (!LV724.sw && LV724.pend) { LV724.pend = false; setTimeout(() => gmSave(), 0); }
+  }
+}
+/* на каком этаже стоит фишка (самая свежая отметка), null — нигде */
+function where724(key) {
+  let best = null, bt = -1;
+  zs724().forEach(z => { const m = mapAt724(z), t = m && m.tk && m.tk[key]; if (t && Number.isFinite(+t.x) && Number.isFinite(+t.y) && (+t.t || 0) > bt) { bt = +t.t || 0; best = z; } });
+  return best;
+}
+function blank724(base, z) {
+  const m = { w: base.w, h: base.h, bg: z < 0 ? 'cave' : base.bg, grid: base.grid, snap: base.snap, on: base.on, show: base.show, items: [], tk: {}, mid: 'm' + uid() };
+  ['r72', 'r73', 'r74', 'wx'].forEach(k => { if (base[k] != null) m[k] = JSON.parse(JSON.stringify(base[k])); });
+  m.tod = z < 0 ? 'dark' : base.tod;
+  return m;
+}
+function addLv724(z, base) { const L = lv724(); if (z === L.z || L.st[z]) return mapAt724(z); return (L.st[z] = blank724(base || gmMap70(), z)); }
+/* перенести фишку на этаж z в точку (x, y) */
+function moveTok724(key, z, x, y, t) {
+  const zh = where724(key), dst = mapAt724(z); if (!dst) return false;
+  let rec = {};
+  zs724().forEach(q => { const m = mapAt724(q); if (m && m.tk && m.tk[key]) { if (q === zh) rec = m.tk[key]; if (q !== z) delete m.tk[key]; } });
+  dst.tk[key] = Object.assign({}, rec, { x: r2_70(clamp70(x, 0.75, dst.w - 0.75)), y: r2_70(clamp70(y, 0.75, dst.h - 0.75)), t: t || serverNow(), tr: null, el: 0 });
+  return true;
+}
+function goLv724(z) {
+  const L = lv724(); if (z === L.z || !L.st[z]) return;
+  L.st[L.z] = gmMap70(); gm.map = L.st[z]; delete L.st[z]; L.z = z;
+  M70.view = null; M70.sel = null; M70.selItem = null; M70.ruler = null; M70.pop = null;
+  gmSave(); paint70();
+}
+/* пара лестницы: другая половина на соседнем этаже */
+function pairOf724(i, z) {
+  if (!i || !i.pr724) return null;
+  for (const q of zs724()) {
+    if (q === z) continue;
+    const m = mapAt724(q), j = m && (m.items || []).find(x => x.pr724 === i.pr724 && isStair724(x));
+    if (j) return { z: q, x: j.x, y: j.y, it: j };
+  }
+  return null;
+}
+function pair724() {
+  const m = gm.map; if (!m || !Array.isArray(m.items) || LV724.sw) return;
+  const L = lv724(), seen = new Set();
+  m.items.forEach(i => {
+    if (!isStair724(i)) return;
+    if (i.pr724 && seen.has(i.pr724)) i.pr724 = '';   // «Копия» лестницы — новая пара
+    if (i.pr724) { seen.add(i.pr724); return; }
+    const A = MAP_ASSETS70[i.k], zt = L.z + A.lv724, made = !mapAt724(zt), dst = addLv724(zt, m);
+    i.pr724 = 'q' + uid(); seen.add(i.pr724);
+    dst.items.push({ id: 'i' + uid() + Math.floor(Math.random() * 1e3), k: A.lv724 > 0 ? 'std724' : 'stu724', x: r2_70(clamp70(i.x, 0.75, dst.w - 0.75)), y: r2_70(clamp70(i.y, 0.75, dst.h - 0.75)), w: i.w, h: i.h, r: 0, pr724: i.pr724 });
+    LV724.toast = `${made ? 'Добавлен этаж' : 'Лестница ведёт на этаж'} «${lvTitle724(zt)}»: ответная лестница там в той же точке. Переключите ${A.lv724 > 0 ? '⬆' : '⬇'}, чтобы обставить.`;
+  });
+}
+const _gmSave724 = gmSave;
+gmSave = function () {
+  if (LV724.sw) { LV724.pend = true; return; }
+  try { pair724(); } catch (e) { /* лестницы не должны ронять сохранение */ }
+  const r = _gmSave724.apply(this, arguments);
+  if (LV724.toast) { const t = LV724.toast; LV724.toast = ''; toast(t, 'heal'); }
+  return r;
+};
+
+/* мастер видит только фишки своего этажа; не расставленные нигде — как раньше */
+const _gmView724 = gmView70;
+gmView70 = function () {
+  const V = _gmView724.apply(this, arguments);
+  if (!hasLv724()) return V;
+  V.toks = V.toks.filter(t => t.placed || where724(t.key) == null);
+  V.z724 = lv724().z;
+  return V;
+};
+/* что уходит игрокам: номер этажа, список этажей, куда ведут лестницы */
+function portals724() {
+  const L = lv724(), out = {};
+  (gmMap70().items || []).forEach(i => { if (!isStair724(i) || i.hid) return; const p = pairOf724(i, L.z); if (p) out[String(i.id)] = [p.z, r2_70(p.x), r2_70(p.y)]; });
+  return Object.keys(out).length ? out : null;
+}
+const _pub724 = pubData70;
+pubData70 = function () {
+  const d = _pub724.apply(this, arguments);
+  if (!d || !hasLv724()) return d;
+  d.z = lv724().z; d.lvs = zs724().map(z => [z, lvTitle724(z)]);
+  const pt = portals724(); if (pt) d.pt724 = pt;
+  return d;
+};
+function pubLv724() {
+  if (appRole() !== 'gm' || !gm.session || gm.session.demo) return;
+  const out = {};
+  if (hasLv724()) Object.keys(lv724().st).map(Number).forEach(z => { const d = inLv724(z, () => pubData70()); if (d) out['z' + z] = d; });
+  const has = Object.keys(out).length, js = gm.session.code + JSON.stringify(out);
+  if (js === LV724.pubJs) return;
+  LV724.pubJs = js;
+  fbReq('PUT', `sessions/${gm.session.code}/public/lv724`, has ? out : null).catch(() => { LV724.pubJs = ''; });
+}
+const _publish724 = publishMap70;
+publishMap70 = function () {
+  const r = _publish724.apply(this, arguments);
+  if (!LV724.sw) { clearTimeout(LV724.pubT); LV724.pubT = setTimeout(() => { try { pubLv724(); } catch (e) { LV724.pubJs = ''; } }, 450); }
+  return r;
+};
+
+/* позиции игроков: фишка идёт на этаж из pos.z (по самой свежей отметке), потом обычное слияние по этажам */
+const _merge724 = mergePos70;
+mergePos70 = function (m) {
+  if (!gm.map || !hasLv724() || !m || !m.players) return _merge724.apply(this, arguments);
+  const zs = zs724(), groups = {}, moved = [];
+  Object.entries(m.players).forEach(([uid, p]) => {
+    const k = 'p:' + uid, sc = sheetCache[uid];
+    const c = [p && p.pos, sc && sc.sheet && sc.sheet.mpos].filter(x => x && Number.isFinite(+x.x) && Number.isFinite(+x.y)).sort((a, b) => (+b.t || 0) - (+a.t || 0))[0];
+    const zh = where724(k), th = zh == null ? -1 : (+mapAt724(zh).tk[k].t || 0);
+    if (c && (+c.t || 0) > th) {
+      let zt = Number.isFinite(+c.z) ? +c.z : 0, bump = false;
+      if (!zs.includes(zt)) { zt = zs.reduce((a, b) => Math.abs(b - zt) < Math.abs(a - zt) ? b : a, zs[0]); bump = true; }
+      if (zt !== zh) {
+        const dst = mapAt724(zt);
+        zs.forEach(q => { const mm = mapAt724(q); if (q !== zt && mm.tk[k]) { dst.tk[k] = Object.assign({}, mm.tk[k], dst.tk[k] || {}); delete mm.tk[k]; } });
+        dst.tk[k] = Object.assign({}, dst.tk[k] || {}, { t: 0 });
+        delete dst.tk[k].x; delete dst.tk[k].y;
+        moved.push([k, zt, bump]);
+      }
+      (groups[zt] = groups[zt] || {})[uid] = p;
+    } else { const z = zh == null ? lv724().z : zh; (groups[z] = groups[z] || {})[uid] = p; }
+  });
+  Object.keys(groups).map(Number).forEach(z => inLv724(z, () => _merge724(Object.assign({}, m, { players: groups[z] }))));
+  moved.forEach(([k, z, bump]) => {
+    if (bump) { const t = mapAt724(z).tk[k]; if (t) t.t = serverNow(); }   // этажа игрока больше нет: пусть узнает новый
+    try { join724(k, z); } catch (e) { /* бой не должен ронять синхронизацию */ }
+  });
+  if (moved.length) { persistGm(); publishMap70(); }
+};
+
+/* ---------- бой: только участники ---------- */
+const fightZs724 = () => { const c = gm.combat; if (!c || !c.active) return []; return c.order.map(where724).filter(z => z != null); };
+function join724(k, z) {
+  const c = gm.combat; if (!c || !c.active || c.order.includes(k) || !fightZs724().includes(z)) return;
+  const [kind, id] = k.split(':'), roll = 1 + Math.floor(Math.random() * 20);
+  if (kind === 'p') {
+    const p = playerById(id); if (!p) return;
+    const val = roll + (summaryOf(p.sheet).init || 0);
+    join72(id, val);
+    toast(`${summaryOf(p.sheet).name || 'Игрок'} пришёл на этаж, где идёт бой: в очереди (инициатива ${val}).`, 'info');
+  } else {
+    const e = enemyById(id); if (!e || e.hp <= 0) return;
+    const cur = c.order[c.turn]; gm.inits[k] = roll + (parseInt(e.initMod) || 0); c.order.push(k);
+    c.order.sort((a, b) => gm.inits[b] - gm.inits[a]); c.turn = Math.max(0, c.order.indexOf(cur));
+    gmLog('Мастер', `${foeName(e)} вступает в бой (инициатива ${gm.inits[k]}).`, 'info');
+    gmSave();
+  }
+}
+const _openIni724 = openInitiative;
+openInitiative = function () {
+  const r = _openIni724.apply(this, arguments);
+  try {
+    if (hasLv724() && iniDraft && iniDraft.rows) {
+      const z = lv724().z, n0 = iniDraft.rows.length;
+      iniDraft.rows = iniDraft.rows.filter(x => { const w = where724(x.key); return w == null || w === z; });
+      if (iniDraft.rows.length < n0) toast(`В бою только «${lvTitle724(z)}»: ${n0 - iniDraft.rows.length} на других этажах не участвуют.`, 'info');
+      refreshModal();
+    }
+  } catch (e) { /* ignore */ }
+  return r;
+};
+/* «подключился во время боя» — только про тех, кто на этаже боя */
+const _out724 = out72;
+out72 = function () {
+  const list = _out724.apply(this, arguments);
+  if (!hasLv724()) return list;
+  const fz = fightZs724();
+  return list.filter(p => { const w = where724('p:' + p.id); return w == null || fz.includes(w); });
+};
+
+/* ---------- игрок: свой этаж ---------- */
+function myZ724() {
+  const o = LV724.orig; if (!o || !Array.isArray(o.lvs)) return 0;
+  const mv = mv70(), key = 'p:' + myPid(), pub = (live.mirror && live.mirror.public) || {};
+  let best = mv.z724 && typeof mv.z724 === 'object' ? { z: +mv.z724.z || 0, t: +mv.z724.t || 0 } : { z: 0, t: 0 };
+  [o].concat(Object.values(pub.lv724 || {})).forEach(d => { const a = d && d.tk && d.tk[key]; if (Array.isArray(a) && (+a[2] || 0) > best.t) best = { z: +d.z || 0, t: +a[2] || 0 }; });
+  if (!o.lvs.some(x => Array.isArray(x) && +x[0] === best.z)) best.z = +o.z || 0;
+  if (!mv.z724 || mv.z724.z !== best.z || mv.z724.t !== best.t) { mv.z724 = best; mvSave70(); }
+  return best.z;
+}
+function sub724(m) {
+  const pub = m && m.public; if (!pub || appRole() === 'gm') return;
+  if (!pub.map || !pub.map._s724) LV724.orig = pub.map || null;
+  const o = LV724.orig;
+  if (!o || !Array.isArray(o.lvs) || (sess && sess.demo)) { if (pub.map && pub.map._s724) { if (o) pub.map = o; else delete pub.map; } return; }
+  const z = myZ724();
+  if ((+o.z || 0) === z) { pub.map = o; return; }
+  const d = pub.lv724 && pub.lv724['z' + z];
+  pub.map = Object.assign({ _s724: 1 }, d || {});
+}
+const _onLive724 = onLive;
+onLive = function (m) { try { sub724(m); } catch (e) { /* ignore */ } return _onLive724.apply(this, arguments); };
+/* в pos и в лист — номер этажа */
+const _fbReq724 = fbReq;
+fbReq = function (method, path, body) {
+  if (method === 'PUT' && body && typeof body === 'object' && /\/players\/[^/]+\/pos$/.test(String(path)) && appRole() !== 'gm') {
+    const z = LV724.orig && Array.isArray(LV724.orig.lvs) ? myZ724() : 0; if (z) body.z = z;
+  }
+  return _fbReq724.apply(this, arguments);
+};
+const _push724 = pushPos70;
+pushPos70 = function () {
+  const r = _push724.apply(this, arguments);
+  try { const z = LV724.orig && Array.isArray(LV724.orig.lvs) ? myZ724() : 0; if (state.mpos && (state.mpos.z || 0) !== z) { if (z) state.mpos.z = z; else delete state.mpos.z; persist(); } } catch (e) { /* ignore */ }
+  return r;
+};
+const _sanitize724 = sanitize;
+sanitize = function (raw) {
+  const s = _sanitize724(raw), p = raw && raw.mpos;
+  if (s.mpos && p && Number.isFinite(+p.z) && +p.z) s.mpos.z = clamp70(Math.round(+p.z), -9, 9);
+  return s;
+};
+/* чужие фишки по их pos — только со своего этажа */
+const _plView724 = plView70;
+plView70 = function () {
+  const V = _plView724.apply(this, arguments);
+  try {
+    if (V && sess && !sess.demo && LV724.orig && Array.isArray(LV724.orig.lvs)) {
+      const z = myZ724(), pm = plPub70() || {}, tk = pm.tk || {}, pl = (live.mirror && live.mirror.players) || {};
+      V.toks = V.toks.filter(t => t.me || t.key.slice(0, 2) !== 'p:' || tk[t.key] || ((pl[t.key.slice(2)] || {}).pos && (+pl[t.key.slice(2)].pos.z || 0) === z));
+    }
+  } catch (e) { /* ignore */ }
+  return V;
+};
+/* бой чужого этажа игрок не видит */
+const _party724 = partyView;
+partyView = function () {
+  const v = _party724.apply(this, arguments);
+  try {
+    if (v && v.vc && sess && !sess.demo && !TVM76 && LV724.orig && Array.isArray(LV724.orig.lvs)) {
+      const me = myPid(); if (!(v.vc.rows || []).some(r => r.pid === me)) v.vc = null;
+    }
+  } catch (e) { /* ignore */ }
+  return v;
+};
+/* «помнят карту» — у каждого этажа своя память */
+const _mem724 = mem73;
+mem73 = function (V) {
+  try {
+    const mv = mv70(), sig = (V.mid || '') + '|' + V.w + 'x' + V.h;
+    if (mv.f73 && mv.f73.sig !== sig) {
+      mv.fm724 = mv.fm724 && typeof mv.fm724 === 'object' ? mv.fm724 : {};
+      mv.fm724[mv.f73.sig] = mv.f73;
+      if (mv.fm724[sig]) { mv.f73 = mv.fm724[sig]; delete mv.fm724[sig]; }
+      const ks = Object.keys(mv.fm724); if (ks.length > 6) delete mv.fm724[ks[0]];
+    }
+  } catch (e) { /* ignore */ }
+  return _mem724.apply(this, arguments);
+};
+
+/* ---------- лестницы рядом с фишкой ---------- */
+function near724(V, t) {
+  if (!V || !t || !t.placed) return [];
+  return V.items.filter(i => isStair724(i) && Math.hypot(i.x - t.x, i.y - t.y) <= tokR70(t.s) + Math.max(i.w, i.h) / 2 + 0.6);
+}
+function stairsFor724(V) {
+  if (V.gmv) {
+    const t = M70.sel && V.toks.find(x => x.key === M70.sel); if (!t) return [];
+    return near724(V, t).map(i => ({ i, p: pairOf724(i, lv724().z) })).filter(x => x.p).map(x => ({ id: x.i.id, z: x.p.z, x: x.p.x, y: x.p.y }));
+  }
+  const me = V.toks.find(x => x.me), pt = (plPub70() || {}).pt724 || {};
+  return near724(V, me).filter(i => Array.isArray(pt[i.id])).map(i => ({ id: i.id, z: +pt[i.id][0], x: +pt[i.id][1], y: +pt[i.id][2] }));
+}
+function useStair724(id) {
+  const V = M70.V; if (!V) return;
+  const s = stairsFor724(V).find(x => String(x.id) === String(id)); if (!s) { toast('Лестница далеко: подойдите к ней вплотную.', 'error'); return; }
+  if (V.gmv) {
+    const k = M70.sel, t = V.toks.find(x => x.key === k); if (!t) return;
+    moveTok724(k, s.z, s.x, s.y);
+    M70.sel = null; gmSave(); join724(k, s.z); paint70();
+    toast(`${t.n}: на этаже «${lvTitle724(s.z)}». Переключите этаж, чтобы увидеть.`, 'info');
+    return;
+  }
+  const T = turn70(V); if (T && T.can === false) { toast(T.why || 'Сейчас не ваш ход.', 'error'); return; }
+  const z0 = myZ724(), mv = mv70(), now = serverNow(), names = (LV724.orig && LV724.orig.lvs) || [];
+  mv.pos = { x: s.x, y: s.y, t: now }; mv.z724 = { z: s.z, t: now }; mv.el = 0; mvSave70();
+  pushPos70(null);
+  sub724(live.mirror); M70.view = null; M70.ring = null; M70.pop = null;
+  paint70();
+  const nm = (names.find(x => Array.isArray(x) && +x[0] === s.z) || [])[1] || lvAuto724(s.z);
+  toast(`${s.z > z0 ? 'Поднялись' : 'Спустились'}: ${nm}.`, 'info');
+}
+
+/* ---------- кнопки этажей на карте ---------- */
+function lvHtml724(V) {
+  const st = stairsFor724(V), name = z => V.gmv ? lvTitle724(z) : ((((LV724.orig && LV724.orig.lvs) || []).find(x => Array.isArray(x) && +x[0] === z) || [])[1] || lvAuto724(z));
+  const sb = st.map(s => `<button type="button" class="m70b m724-go" data-m="lv-use" data-v="${esc(String(s.id))}">${s.z > (V.gmv ? lv724().z : myZ724()) ? '⬆' : '⬇'} ${esc(name(s.z))}</button>`).join('');
+  if (V.gmv) {
+    const zs = zs724(), L = lv724(), i = zs.indexOf(L.z);
+    const cnt = z => { const m = mapAt724(z); return Object.keys(m.tk || {}).filter(k => k[0] === 'p' && Number.isFinite(+m.tk[k].x) && where724(k) === z).length; };
+    const up = zs.slice(i + 1).reduce((a, z) => a + cnt(z), 0), dn = zs.slice(0, i).reduce((a, z) => a + cnt(z), 0);
+    if (zs.length < 2 && !sb) return `<button type="button" class="m70b m724-add" data-m="lv-menu" aria-label="Этажи">⇅</button>`;
+    return `<button type="button" class="m70b" data-m="lv-step" data-v="1" aria-label="Этаж выше">⬆${up ? `<i>${up}</i>` : ''}</button>`
+      + `<button type="button" class="m724-nm" data-m="lv-menu">${esc(lvTitle724(L.z))}</button>`
+      + `<button type="button" class="m70b" data-m="lv-step" data-v="-1" aria-label="Этаж ниже">⬇${dn ? `<i>${dn}</i>` : ''}</button>${sb}`;
+  }
+  if (!LV724.orig || !Array.isArray(LV724.orig.lvs) || LV724.orig.lvs.length < 2) return sb;
+  return `<span class="m724-nm">${esc(name(myZ724()))}</span>${sb}`;
+}
+function lvPaint724() {
+  const st = $('m70-stage'); if (!st || !M70.open) return;
+  let b = $('m724-lv');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'm724-lv'; b.className = 'm724';
+    ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'touchstart'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+    st.appendChild(b);
+  }
+  const V = M70.V, h = V && !(typeof R77 !== 'undefined' && R77.rv) ? lvHtml724(V) : '';
+  if (b.dataset.h !== h) { b.innerHTML = h; b.dataset.h = h; }
+  b.classList.toggle('hidden', !h);
+}
+const _paint724 = paint70;
+paint70 = function () { const r = _paint724.apply(this, arguments); try { lvPaint724(); } catch (e) { /* ignore */ } return r; };
+
+/* ---------- меню этажей у мастера ---------- */
+function lvMenuHtml724() {
+  const L = lv724(), zs = zs724();
+  return `<span class="scroll-tag">Карта боя</span><h3 class="scroll-title">Этажи</h3><div class="scroll-text">
+    <p class="muted">Каждый этаж — своя карта: фон, стены, туман, фишки. Лестницы «вверх/вниз» из «Строить» ставятся парой: ответная появляется на соседнем этаже. Игроки видят только свой этаж, бой идёт только для тех, кто в очереди.</p>
+    <div class="pick m724-list">${zs.slice().reverse().map(z => `<button type="button" class="seg-btn ${z === L.z ? 'on' : ''}" data-m="lv-go" data-v="${z}">${esc(lvTitle724(z))}</button>`).join('')}</div>
+    <div class="pick"><button type="button" class="seg-btn" data-m="lv-new" data-v="1">＋ Этаж выше</button><button type="button" class="seg-btn" data-m="lv-new" data-v="-1">＋ Подвал ниже</button></div>
+    <label>Название этажа<input class="paper-input" id="m724-name" maxlength="30" value="${esc(L.nm[L.z] || '')}" placeholder="${esc(lvAuto724(L.z))}"></label>
+    <div class="pick"><button type="button" class="seg-btn" data-m="lv-ren">Переименовать</button>${zs.length > 1 ? '<button type="button" class="seg-btn red" data-m="lv-del">Убрать этот этаж</button>' : ''}</div>
+    </div><div class="btn-row"><button type="button" class="btn" data-act="modal-close">Закрыть</button></div>`;
+}
+async function lvCmd724(cmd, v) {
+  const L = lv724();
+  if (cmd === 'lv-menu') { showModal(lvMenuHtml724); return; }
+  if (cmd === 'lv-go') { goLv724(+v); refreshModal(); return; }
+  if (cmd === 'lv-step') {
+    const zs = zs724(), i = zs.indexOf(L.z), nz = zs[i + (+v > 0 ? 1 : -1)];
+    if (nz != null) { goLv724(nz); return; }
+    const z = L.z + (+v > 0 ? 1 : -1);
+    if (!(await askConfirm(+v > 0 ? 'Добавить этаж выше?' : 'Добавить подвал?', `Новый пустой этаж «${lvAuto724(z)}» того же размера. Связать этажи — лестницей «вверх/вниз» из «Строить».`, 'Добавить'))) return;
+    addLv724(z); goLv724(z); toast(`Этаж «${lvTitle724(z)}» добавлен.`, 'heal'); return;
+  }
+  if (cmd === 'lv-new') { const zs = zs724(), z = +v > 0 ? zs[zs.length - 1] + 1 : zs[0] - 1; addLv724(z); goLv724(z); refreshModal(); return; }
+  if (cmd === 'lv-ren') { const inp = $('m724-name'), n = inp && inp.value.trim(); if (n) L.nm[L.z] = n.slice(0, 30); else delete L.nm[L.z]; gmSave(); refreshModal(); paint70(); return; }
+  if (cmd === 'lv-del') {
+    const zs = zs724(); if (zs.length < 2) return;
+    if (!(await askConfirm('Убрать этаж?', `«${lvTitle724(L.z)}» со всеми предметами пропадёт. Фишки с него вернутся «не на карте».`, 'Убрать', true))) return;
+    const z = L.z, nz = zs.filter(q => q !== z).reduce((a, b) => Math.abs(b - z) < Math.abs(a - z) ? b : a);
+    goLv724(nz); delete L.st[z]; delete L.nm[z]; gmSave(); refreshModal(); paint70(); return;
+  }
+  if (cmd === 'lv-use') useStair724(v);
+}
+const _act724 = act70;
+act70 = function (cmd, b) {
+  if (/^lv-/.test(cmd)) { lvCmd724(cmd, b && b.dataset ? b.dataset.v : '').catch(e => toast('Этажи: ' + e.message, 'error')); return; }
+  const isGm = appRole() === 'gm', reset = isGm && (cmd === 'tpl' || cmd === 'load');
+  const src = cmd === 'load' && isGm ? (gm.maps70 || []).find(x => x.id === (b && b.dataset.v)) : null;
+  const svName = cmd === 'save' && isGm ? (($('m70-name') && $('m70-name').value.trim()) || `Карта ${(gm.maps70 || []).length + 1}`).slice(0, 40) : '';
+  const r = _act724.apply(this, arguments);
+  try {
+    if (reset) { const L = lv724(); L.st = {}; L.nm = {}; L.z = src && src.lv724 && Number.isFinite(+src.lv724.z) ? +src.lv724.z : 0; if (src && src.lv724) restoreLv724(src.lv724); gmSave(); paint70(); }
+    if (isGm && cmd === 'save' && hasLv724()) {
+      const L = lv724(), rec = (gm.maps70 || []).find(x => x.name === svName);
+      if (rec) { rec.lv724 = { z: L.z, nm: Object.assign({}, L.nm), st: {} }; Object.keys(L.st).forEach(z => { rec.lv724.st[z] = typeof snapMap74 === 'function' ? snapMap74(L.st[z]) : { w: L.st[z].w, h: L.st[z].h, bg: L.st[z].bg, items: L.st[z].items }; }); gmSave(); }
+    }
+  } catch (e) { /* ignore */ }
+  return r;
+};
+function restoreLv724(S) {
+  const L = lv724();
+  Object.keys(S.st || {}).map(Number).forEach(z => { if (z === L.z) return; addLv724(z); inLv724(z, () => loadMap70(S.st[z])); });
+  L.nm = Object.assign({}, S.nm || {});
+}
+/* готовые карты с этажами: выбрали основную — этажи и лестницы встают сами */
+const LVOF724 = {};
+Object.values(LIB723).forEach(Lb => { const raw = (MAP_CAT75.maps.items || []).find(x => x[0] === Lb.id); if (raw && raw[7]) (LVOF724[raw[7]] = LVOF724[raw[7]] || []).push([+raw[8] || 0, Lb.id]); });
+const _libSet724 = libSet723;
+libSet723 = function (id) {
+  const r = _libSet724.apply(this, arguments);
+  try {
+    const lv = LVOF724[id]; if (!lv || !lv.length) return r;
+    const L = lv724(); L.st = {}; L.nm = {}; L.z = 0;
+    const base = gmMap70();
+    base.items = (base.items || []).filter(i => !isStair724(i));
+    lv.forEach(([z, lid]) => { const Lb = LIB723[lid], m = addLv724(z, base); m.bg74 = { h: 'L' + lid, lib: lid, op: 1, ar: r2_70(Lb.h / Lb.w) }; m.w = clamp70(Lb.w, 6, 60); m.h = clamp70(Lb.h, 6, 60); L.nm[z] = Lb.n.replace(/^.*?,\s*/, '').replace(/^./, c => c.toUpperCase()); });
+    (LVLIB724[id] || []).forEach(([z1, x1, y1, z2, x2, y2]) => {
+      const a = mapAt724(z1), c = mapAt724(z2); if (!a || !c) return;
+      const pr = 'q' + uid(), up = z2 > z1;
+      a.items.push({ id: 'i' + uid() + '1', k: up ? 'stu724' : 'std724', x: x1, y: y1, w: 1.5, h: 1.5, r: 0, pr724: pr });
+      c.items.push({ id: 'i' + uid() + '2', k: up ? 'std724' : 'stu724', x: x2, y: y2, w: 1.5, h: 1.5, r: 0, pr724: pr });
+    });
+    gmSave(); paint70();
+    toast(`Этажей у карты: ${lv.length + 1}. Переключайте ⬆⬇ справа, лестницы уже стоят.`, 'heal');
+  } catch (e) { /* ignore */ }
+  return r;
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
