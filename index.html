@@ -1354,7 +1354,7 @@ body.map70-on .toast{pointer-events:none}
 .m723-it small{font-size:10.5px;color:#9fb0c6}
 .m723-it.on{border-color:#e0bd6e;box-shadow:0 0 0 1px #e0bd6e inset}
 /* 7.24: этажи карты */
-.m724{position:absolute;right:8px;top:8px;z-index:6;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:4px;background:rgba(10,14,22,.84);border:1px solid #3a4658;border-radius:12px;max-width:46%}
+.m724{position:absolute;right:8px;top:8px;z-index:6;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:4px;background:rgba(10,14,22,.84);border:1px solid #3a4658;border-radius:12px;max-width:40%}
 .m724.hidden{display:none}
 .m724 .m70b{position:relative;min-width:40px}
 .m724 .m70b i{position:absolute;right:-4px;top:-5px;font-style:normal;font-size:10px;line-height:15px;min-width:15px;padding:0 3px;border-radius:8px;background:#2a6f68;color:#e9fffb}
@@ -25394,7 +25394,7 @@ function lvHtml724(V) {
     const zs = zs724(), L = lv724(), i = zs.indexOf(L.z);
     const cnt = z => { const m = mapAt724(z); return Object.keys(m.tk || {}).filter(k => k[0] === 'p' && Number.isFinite(+m.tk[k].x) && where724(k) === z).length; };
     const up = zs.slice(i + 1).reduce((a, z) => a + cnt(z), 0), dn = zs.slice(0, i).reduce((a, z) => a + cnt(z), 0);
-    if (zs.length < 2 && !sb) return `<button type="button" class="m70b m724-add" data-m="lv-menu" aria-label="Этажи">⇅</button>`;
+    if (zs.length < 2 && !sb) return '';   // без этажей кнопок нет: «Этажи» в меню ⋯
     return `<button type="button" class="m70b" data-m="lv-step" data-v="1" aria-label="Этаж выше">⬆${up ? `<i>${up}</i>` : ''}</button>`
       + `<button type="button" class="m724-nm" data-m="lv-menu">${esc(lvTitle724(L.z))}</button>`
       + `<button type="button" class="m70b" data-m="lv-step" data-v="-1" aria-label="Этаж ниже">⬇${dn ? `<i>${dn}</i>` : ''}</button>${sb}`;
@@ -25492,6 +25492,15 @@ libSet723 = function (id) {
     toast(`Этажей у карты: ${lv.length + 1}. Переключайте ⬆⬇ справа, лестницы уже стоят.`, 'heal');
   } catch (e) { /* ignore */ }
   return r;
+};
+/* меню ⋯: этажи готовых карт отдельными значками не показываем (приходят с основной), есть пункт «Этажи» */
+const LVIDS724 = new Set([].concat(...Object.values(LVOF724).map(a => a.map(x => x[1]))));
+const _gmMenu724 = gmMenuHtml70;
+gmMenuHtml70 = function () {
+  let h = _gmMenu724.apply(this, arguments);
+  h = h.replace(/<button type="button" class="m723-it[^"]*" data-m="lib723" data-v="([^"]+)">[\s\S]*?<\/button>/g, (all, id) => LVIDS724.has(id) ? '' : all);
+  const n = zs724().length;
+  return h.replace('<div class="btn-row">', `<div class="pick"><button type="button" class="seg-btn" data-m="lv-menu">⇅ Этажи${n > 1 ? ` (${n})` : ''}</button></div><div class="btn-row">`);
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
