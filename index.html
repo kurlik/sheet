@@ -25477,8 +25477,12 @@ const _libSet724 = libSet723;
 libSet723 = function (id) {
   const r = _libSet724.apply(this, arguments);
   try {
-    const lv = LVOF724[id]; if (!lv || !lv.length) return r;
-    const L = lv724(); L.st = {}; L.nm = {}; L.z = 0;
+    const lv = LVOF724[id], L = lv724();
+    if (!lv || !lv.length) {   // карта без этажей вместо готовой с этажами: старые этажи и лестницы убрать
+      if (L.lib && L.lib !== id) { L.st = {}; L.nm = {}; L.z = 0; L.lib = ''; const m = gmMap70(); m.items = (m.items || []).filter(i => !isStair724(i)); gmSave(); paint70(); }
+      return r;
+    }
+    L.st = {}; L.nm = {}; L.z = 0; L.lib = id;
     const base = gmMap70();
     base.items = (base.items || []).filter(i => !isStair724(i));
     lv.forEach(([z, lid]) => { const Lb = LIB723[lid], m = addLv724(z, base); m.bg74 = { h: 'L' + lid, lib: lid, op: 1, ar: r2_70(Lb.h / Lb.w) }; m.w = clamp70(Lb.w, 6, 60); m.h = clamp70(Lb.h, 6, 60); L.nm[z] = Lb.n.replace(/^.*?,\s*/, '').replace(/^./, c => c.toUpperCase()); });
