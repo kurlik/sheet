@@ -1,5 +1,5 @@
 /* Critical Roll: офлайн и обновления. Меняйте VERSION при каждой выкладке index.html. */
-const VERSION = 'sheet-7.32.0';
+const VERSION = 'sheet-7.33.0';
 const APPV = VERSION.slice(6);   // та же версия, что APP_VERSION в index.html
 const CORE = ['./index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 const PAGE_HDR = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
@@ -9,7 +9,7 @@ const IMG = 'cr-img-1';   // не «sheet-…»: кнопка «Обновить
 /* 7.5: картинки каталога карты (map/<хеш>.webp) не качаются при установке: кэшируются, когда карта их впервые покажет,
    и живут в своём кэше MAP между выпусками (имя от содержимого — устареть не могут). */
 const MAP = 'cr-map-1';
-const imgList = html => [...new Set(html.match(/img\/[0-9a-f]{12}\.webp/g) || [])].map(x => './' + x);
+const imgList = html => [...new Set(html.match(/img\/[0-9a-f]{12}\.(?:webp|woff2)/g) || [])].map(x => './' + x);
 async function cacheImgs(html) {
   const c = await caches.open(IMG), have = new Set((await c.keys()).map(r => new URL(r.url).pathname.replace(/^.*\//, '')));
   const need = imgList(html).filter(u => !have.has(u.slice(6)));
@@ -70,6 +70,6 @@ self.addEventListener('fetch', e => {
     }));
     return;
   }
-  const box = /\/img\/[0-9a-f]{12}\.webp$/.test(u.pathname) ? IMG : /\/map\/[0-9a-f]{12}\.webp$/.test(u.pathname) ? MAP : VERSION;   // картинки — в свой кэш
+  const box = /\/img\/[0-9a-f]{12}\.(?:webp|woff2)$/.test(u.pathname) ? IMG : /\/map\/[0-9a-f]{12}\.webp$/.test(u.pathname) ? MAP : VERSION;   // картинки — в свой кэш
   e.respondWith(caches.match(r, { ignoreSearch: false }).then(m => m || fetch(r).then(res => { if (res.ok && !u.search) { const c = res.clone(); caches.open(box).then(x => x.put(r, c)); } return res; })));
 });
