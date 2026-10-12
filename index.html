@@ -1360,6 +1360,7 @@ body.map70-on .toast{pointer-events:none}
 .m724 .m70b i{position:absolute;right:-4px;top:-5px;font-style:normal;font-size:10px;line-height:15px;min-width:15px;padding:0 3px;border-radius:8px;background:#2a6f68;color:#e9fffb}
 .m724-nm{font:600 12px/1.2 inherit;color:#e0bd6e;background:none;border:0;padding:2px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .m724 .m724-go{font-size:12px;white-space:nowrap;border-color:#5fd0c3;color:#bff3ec}
+.m782-coins input{width:4.6em;flex:0 0 auto;min-width:0}
 </style>
 </head>
 <body>
@@ -1777,6 +1778,7 @@ const ITEMS = [
   { id: 'rope', name: 'Пеньковая верёвка, 15 м', type: 'Инструмент', weight: 5, aliases: ['верёвка', 'веревка', 'канат'], desc: 'Крепкая верёвка.' },
   { id: 'bedroll', name: 'Спальник', type: 'Инструмент', weight: 3.5, aliases: ['спальный мешок', 'одеяло'], desc: 'Для ночёвки под открытым небом.' },
   { id: 'healer_kit', name: 'Набор целителя', type: 'Инструмент', weight: 1.5, aliases: ['аптечка'], charges: 10, refill: 'healer_refill', chargeUse: 'Набор целителя применён.', desc: 'Бинты, мази и шины на 10 применений. «Использовать» — выберите, кому: упавшего (0 HP) стабилизирует и поднимает с 1 HP, раненого лечит на 1d4 + бонус мастерства. Себя тоже, если ранены. В бою это действие. «Пополнить» заправляет набор свёртком «Бинты и мази для набора».' },
+  { id: 'scroll_knock', name: 'Свиток Открывания', type: 'Расходник', weight: 0.05, aliases: ['открывание', 'свиток стука', 'стук', 'knock'], desc: 'Слово на свитке отпирает любой обычный замок, засов или решётку рядом. Свиток сгорает, а стук слышно издалека.', use: 'На карте подойдите к запертому замку: «✨ Открывание».' },
   { id: 'lockpicks', name: 'Набор отмычек', type: 'Инструмент', weight: 0.2, aliases: ['отмычки', 'отмычка', 'воровские отмычки'], desc: 'Несколько тонких стальных крючков в кожаном свёртке. Вскрывают замки.' },
   { id: 'tools', name: 'Набор инструментов', type: 'Инструмент', weight: 2.5, aliases: ['инструменты'], desc: 'Инструменты ремесленника.' },
   { id: 'censer', name: 'Окуриватель с травами', type: 'Инструмент', weight: 1.2, aliases: ['окуриватель', 'кадило'], charges: 10, refill: 'censer_herbs', chargeUse: 'Окурите место: дым отпугивает насекомых и заглушает зловоние.', desc: 'Дым отпугивает насекомых и заглушает зловоние. Трав хватает на 10 окуриваний. «Пополнить» забирает из сумки пучок «Травы для окуривателя».' },
@@ -4352,7 +4354,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.31.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.32.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'new', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme !== 'new') { settings.theme = 'new'; try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } } // 6.6.3: тема «Old» убрана
@@ -17139,7 +17141,7 @@ const TRAP74 = { pit: ['Яма с кольями', 'Лов', 13, '2d10', 'кол
   blade: ['Качающееся лезвие', 'Лов', 14, '3d10', 'рубящий', '', 1], net: ['Сеть с потолка', 'Лов', 12, '', '', 'restrained:10', 0],
   gas: ['Сонный газ', 'Тел', 13, '', '', 'unconscious:10', 0], plate: ['Нажимная плита', '', 0, '', '', '', 0] };
 const FLAM74 = new Set(['table', 'table2', 'rtable', 'chair', 'bench', 'bar', 'barrel', 'crate', 'chest', 'bed', 'bush', 'tree', 'fence', 'door', 'stage', 'rug', 'web', 'roof', 'gallery', 'oil']);
-const LOCK74 = [0, 10, 15, 20], FIND74 = [10, 13, 15, 18], TTL74 = [0, 1, 3, 10];
+const LOCK74 = [0, 10, 12, 15, 18, 20, 25], FIND74 = [10, 13, 15, 18], TTL74 = [0, 1, 3, 10];
 
 /* ---------- новые предметы ---------- */
 Object.assign(MAP_ASSETS70, {
@@ -17578,7 +17580,7 @@ itemSvg70 = function (i, V) {
   const add = [];
   if (i.k === 'lever' && i.o) h = h.replace(/<use [^>]*\/>/, u => `<g transform="translate(${r2_70(i.x * 2)} 0) scale(-1 1)">${u}</g>`);
   if (i.k === 'chest' && i.o) add.push(`<rect x="${r2_70(i.x - i.w * 0.38)}" y="${r2_70(i.y - i.h * 0.3)}" width="${r2_70(i.w * 0.76)}" height="${r2_70(i.h * 0.45)}" fill="#1a0f06" opacity=".85"/>`);
-  if (W.lk && !i.o && (A.door || i.k === 'chest')) add.push(`<text x="${r2_70(i.x)}" y="${r2_70(i.y + 0.12)}" font-size=".34" text-anchor="middle">🔒</text>`);
+  if (W.lk && !i.o && (A.door || isCn782(i))) add.push(`<text x="${r2_70(i.x)}" y="${r2_70(i.y + 0.12)}" font-size=".34" text-anchor="middle">🔒</text>`);
   if (W.bn) add.push(`<text x="${r2_70(i.x)}" y="${r2_70(i.y + 0.18)}" font-size=".6" text-anchor="middle" class="m74-burn">🔥</text>`);
   if (V.gmv && i.k === 'trap') { const T = trapOf74(i); add.push(`<text x="${r2_70(i.x)}" y="${r2_70(i.y + i.h / 2 + 0.36)}" font-size=".28" text-anchor="middle" fill="#e8a39b" stroke="#05060a" stroke-width=".07" paint-order="stroke">${esc(T.n)}${T.arm ? '' : ' (не взведена)'}</text>`); }
   if (V.gmv && i.hid && +W.sdc > 0) add.push(`<text x="${r2_70(i.x)}" y="${r2_70(i.y - i.h / 2 - 0.12)}" font-size=".26" text-anchor="middle" fill="#e0bd6e" stroke="#05060a" stroke-width=".07" paint-order="stroke">тайник Сл ${+W.sdc}</text>`);
@@ -17660,17 +17662,18 @@ function itemBar74(V, i) {
     ch.push(`<span class="m70chip flat">заметить</span>`); FIND74.forEach(dc => ch.push(chip74('i74-dc', dc, 'Сл ' + dc, T.dc === dc)));
     ch.push(chip74('i74-arm', '', T.arm ? 'Взведена' : 'Не взведена', T.arm), chip74('i74-fire', '', 'Сработать…'));
   }
-  if (A.door || i.k === 'chest') LOCK74.forEach(dc => ch.push(chip74('i74-lk', dc, dc ? `🔒 Сл ${dc}` : 'Без замка', (+W.lk || 0) === dc)));
-  if (i.k === 'chest' || i.k === 'loot') ch.push(chip74('i74-roll', '', '🎲 Наполнить'), chip74('i74-empty', '', 'Пусто'));
-  if (i.k === 'chest' && i.o) ch.push(chip74('i74-shut', '', 'Закрыть сундук'));
-  if (i.k === 'lever' || i.k === 'trap' || i.k === 'chest') ch.push(chip74('i74-link', '', `🔗 Связи (${(W.lnk || []).length})`, M74.link === i.id));
+  if (A.door || isCn782(i)) LOCK74.forEach(dc => ch.push(chip74('i74-lk', dc, dc ? `🔒 Сл ${dc}` : 'Без замка', (+W.lk || 0) === dc)));
+  if (i.k === 'loot') ch.push(chip74('i74-roll', '', '🎲 Наполнить'), chip74('i74-empty', '', 'Пусто'));
+  if (isCn782(i) && i.o) ch.push(chip74('i74-shut', '', 'Закрыть'));
+  if (i.k === 'lever' || i.k === 'trap' || isCn782(i)) ch.push(chip74('i74-link', '', `🔗 Связи (${(W.lnk || []).length})`, M74.link === i.id));
   if (i.k === 'lever') ch.push(chip74('i74-pull', '', 'Дёрнуть'));
   if (i.hid && i.k !== 'trap' && i.k !== 'entry') { ch.push('<span class="m70chip flat">тайник</span>'); [0].concat(FIND74).forEach(dc => ch.push(chip74('i74-sdc', dc, dc ? 'Сл ' + dc : 'нет', (+W.sdc || 0) === dc))); }
   if (A.haz || A.opq || i.k === 'oil' || W.ttl != null) { ch.push('<span class="m70chip flat">держится</span>'); TTL74.forEach(n => ch.push(chip74('i74-ttl', n, n ? n + ' р.' : '∞', (+W.ttl || 0) === n))); }
   if (FLAM74.has(i.k) && !W.bn) ch.push(chip74('i74-burn', '', '🔥 Поджечь'));
   let extra = '';
   if (A.note) extra = `<div class="m74-txrow"><input class="paper-input" id="m74-tx" maxlength="60" placeholder="${A.note === 2 ? 'Подпись на карте' : 'Текст заметки'}" value="${esc(W.tx || '')}"><button type="button" class="m70chip gold" data-m="i74-tx">Сохранить</button></div>`;
-  if (i.k === 'chest' || i.k === 'loot') extra = `<p class="m70-hint">Внутри: ${esc(lootTxt74(W.lt === 0 ? { c: {}, it: [] } : W.lt))}</p>`;
+  if (i.k === 'loot') extra = `<p class="m70-hint">Внутри: ${esc(lootTxt74(W.lt === 0 ? { c: {}, it: [] } : W.lt))}</p>`;
+  if (A.door || isCn782(i) || A.low || A.pick) { const C = cnBar782(V, i); ch.push(C.ch); extra += C.extra; }
   if (M74.link === i.id) extra = '<p class="m70-hint">Касайтесь дверей, решёток, ловушек, света или скрытых предметов: связать или развязать.</p>' + extra;
   return { ch: ch.join(''), extra };
 }
@@ -17798,7 +17801,7 @@ function paGo74() {
 }
 
 /* ---------- игрок: меню по касанию у предметов ---------- */
-function tools74() { return (state.inventory || []).some(i => /воровск|отмычк/i.test(i.name || '')); }
+function tools74() { return (state.inventory || []).some(i => /воровск|отмыч/i.test(i.name || '')); }
 function chk74(k) {
   const d = derive();
   if (k === 'p') return { mod: (d.mods.DEX || 0) + (tools74() ? d.prof : 0), n: 'Ловкость рук' + (tools74() ? ' + инструменты' : '') };
@@ -17823,7 +17826,7 @@ popHtml70 = function (V) {
     } else if (it.k === 'gate') add.push(btn72('p74-chk', it.id + '|f', it.o ? 'Решётка поднята' : 'Поднять решётку силой', it.o ? 'проходите' : why || 'Сила Сл 20 · или найдите рычаг', !!why || !!it.o));
     else add.push(btn72('p74-door', it.id, it.o ? 'Закрыть дверь' : 'Открыть дверь', why || 'свободно', !!why));
   }
-  if (it.k === 'chest') {
+  if (it.k === 'chest' && !isCn782(it)) {
     if (it.o) add.push('<p class="m70pop-n">Сундук открыт.</p>');
     else if (W.lk) { add.push(btn72('p74-chk', it.id + '|p', '🔒 Вскрыть сундук', why || (tools74() ? 'Ловкость рук + инструменты · действие' : 'нужны воровские инструменты'), !!why || !tools74())); add.push(btn72('p74-chk', it.id + '|f', 'Сломать замок', why || 'Сила (Атлетика) · действие', !!why)); }
     else add.push(btn72('p74-chest', it.id, 'Открыть сундук', why || 'добыча — вам', !!why));
@@ -17856,7 +17859,7 @@ function chkGo74(itId, mode, nat) {
   const V = M70.V, it = V && V.items.find(x => x.id === itId); if (!it) return;
   const C = chk74(mode), R = roll71(nat, mode === 'f' ? 0 : checkAdv72()), tot = R.nat + C.mod;
   fxNat691(R.nat);
-  const what = mode === 'd' ? 'обезвредить ловушку' : mode === 'p' ? 'вскрыть замок' : it.k === 'gate' ? 'поднять решётку' : it.k === 'chest' ? 'сломать замок' : 'выбить дверь';
+  const what = mode === 'd' ? 'обезвредить ловушку' : mode === 'p' ? 'вскрыть замок' : it.k === 'gate' ? 'поднять решётку' : isCn782(it) ? 'сломать замок' : 'выбить дверь';
   addLog(`Пытаюсь ${what}: ${C.n} ${R.txt} ${sgn(C.mod)} = ${tot}.`, 'info');
   if (!(sess && sess.demo)) toast(`${C.n}: ${tot}. Мастер решит, поддалось ли.`, 'info');
   plAct74(mode === 'd' ? 'dsr74' : 'pck74', itId, { cost: 1, a: { n: tot, m: mode } });
@@ -17882,8 +17885,8 @@ function gmAct74(uid, a) {
     else if (n >= dc) {
       W.lk = 0;
       if (a.m === 'f' && it.k === 'door') { Object.assign(it, { k: 'debris', w: 1.2, h: 1, o: 0 }); say('Выбита!', 0); gmLog(name, `выбивает дверь (${n} против Сл ${dc}).`, 'info'); }
-      else { it.o = 1; say(a.m === 'f' ? 'Поддалось!' : 'Щёлк, открыто', 0); gmLog(name, `${a.m === 'f' ? 'силой открывает' : 'вскрывает'} ${A.n.toLowerCase()} (${n} против Сл ${dc}).`, 'info'); if (it.k === 'chest') openChest74(it, uid, key, name); }
-    } else { say('Не поддаётся', 1); gmLog(name, `не может ${a.m === 'f' ? 'взломать силой' : 'вскрыть'} ${A.n.toLowerCase()} (${n} против Сл ${dc})${a.m === 'f' ? ' — шумно!' : ''}.`, 'info'); }
+      else { it.o = 1; say(a.m === 'f' ? 'Поддалось!' : 'Щёлк, открыто', 0); gmLog(name, `${a.m === 'f' ? 'силой открывает' : 'вскрывает'} ${A.n.toLowerCase()} (${n} против Сл ${dc}).`, 'info'); if (isCn782(it)) openChest74(it, uid, key, name); }
+    } else { say('Не поддаётся', 1); gmLog(name, `не может ${a.m === 'f' ? 'взломать силой' : 'вскрыть'} ${A.n.toLowerCase()} (${n} против Сл ${dc})${a.m === 'f' ? ' — шумно!' : ''}.`, 'info'); failLock782(it, a, uid, key, name, dc, n); }
   } else if (a.k === 'cst74') {
     if (+W.lk > 0 && !it.o) { say('Заперто!', 1); return gmSave(); }
     it.o = 1; openChest74(it, uid, key, name);
@@ -26325,6 +26328,218 @@ up70 = function (e) {
     paint70(); return;
   }
   return _up731.apply(this, arguments);
+};
+/* =====================================================================
+   ВЫПУСК 7.32: СУНДУКИ, ЗАМКИ И ВЗЛОМ
+   Контейнер = сундук, ящик и сундуки/ящики из каталога, плюс любой низкий предмет, который мастер отметил «📦 Контейнер» (w74.cn).
+   Мастер в «Стройке» задаёт содержимое: из каталога предметов (поиск), своё по названию, монеты, ключи от замков этой карты,
+   «🎲 Случайно»; без содержимого — случайная добыча при открытии. Замок: Сл (7.4), ключ-предмет w74.ky (выдать игроку или
+   положить в другой контейнер), последствия провала w74.fb = { br: отмычки ломаются при провале на 5+, al: тревога }.
+   Игрок рядом: открыть, вскрыть (Ловкость рук + инструменты), сломать (Сила), ключом (мастер сверяет инвентарь), «Открывание»
+   (свиток тратится, заклинание из черт листа — громко). Открытый контейнер: игрок видит содержимое и берёт по предмету или всё.
+   Приватность: содержимое уходит игрокам (public/map it[9].lt) только у открытого контейнера; ключ и последствия — никогда.
+   ===================================================================== */
+const CN782 = new Set(['chest', 'crate', 'c_chest', 'c_treasure-chest', 'c_crates', 'c_crate-open', 'c_barrel-crate']);
+const M782 = { q: '' };
+function isCn782(i) { return !!i && i.k !== 'loot' && (CN782.has(i.k) || !!W74(i).cn); }
+const COIN782 = { gold: 'зол.', silver: 'сер.', copper: 'мед.' };
+function keyItems782() { return (state.inventory || []).filter(i => /ключ/i.test(i.name || '')); }
+function knock782() {
+  const s = (state.inventory || []).find(i => /открыван|отпиран|knock/i.test(i.name || ''));
+  if (s) return { src: 'scroll', n: s.name };
+  const t = (state.userTraits || []).find(t => /открыван|отпиран|knock/i.test((t.title || '') + ' ' + (t.name || '')));
+  return t ? { src: 'spell', n: t.title || t.name } : null;
+}
+function lt782(i) { const W = W74(i); return W.lt && typeof W.lt === 'object' ? W.lt : null; }
+function ltList782(L) {
+  const out = [], c = (L && L.c) || {};
+  if (c.gold || c.silver || c.copper) out.push({ ix: 'c', n: ['gold', 'silver', 'copper'].filter(k => c[k]).map(k => c[k] + ' ' + COIN782[k]).join(', ') });
+  ((L && L.it) || []).forEach((x, ix) => out.push({ ix, n: x.name + (x.qty > 1 ? ' × ' + x.qty : '') }));
+  return out;
+}
+function keyName782(i) {
+  const m = gmMap70(), n = m.items.filter(x => x !== i && W74(x).ky).length + 1;
+  return `Ключ от ${isCn782(i) ? 'сундука' : 'двери'} №${n}`;
+}
+
+/* ---------- мастер: панель контейнера / замка в «Стройке» ---------- */
+function cnBar782(V, i) {
+  const A = A74(i), W = W74(i), cn = isCn782(i), ch = [];
+  let ex = '';
+  if (!cn && !A.door) return { ch: chip74('cn782-on', '', '📦 Контейнер'), extra: '' };
+  if (W.cn && !CN782.has(i.k)) ch.push(chip74('cn782-on', '', '📦 Контейнер', true));
+  if (cn) ch.push(chip74('cn782-o', '', i.o ? 'Открыт' : 'Закрыт', !!i.o));
+  if (+W.lk > 0) {
+    ch.push(chip74('cn782-ky', '', W.ky ? '🗝 Есть ключ' : '🗝 Ключ', !!W.ky));
+    ch.push(chip74('cn782-fb', 'br', 'Провал на 5: ломает отмычки', !!(W.fb && W.fb.br)), chip74('cn782-fb', 'al', 'Провал: тревога', !!(W.fb && W.fb.al)));
+    if (W.ky) ex += `<div class="m74-txrow"><input class="paper-input" id="m782-ky" maxlength="40" value="${esc(W.ky)}"><button type="button" class="m70chip gold" data-m="cn782-kyn">Имя ключа</button></div>
+      <div class="m70-scroll"><span class="m70chip flat">выдать ключ</span>${(gm.players || []).map(p => chip74('cn782-kg', p.id, esc(short70(p.sheet.name || 'Игрок')))).join('') || '<span class="m70chip flat">нет игроков</span>'}</div>`;
+  }
+  if (!cn) return { ch: ch.join(''), extra: ex };
+  const L = lt782(i), rows = ltList782(L);
+  ex += `<p class="m70-hint">Внутри: ${W.lt === 0 || (L && !rows.length) ? 'пусто' : !L ? 'случайная добыча при открытии' : ''}${i.o ? ' · <b>открыт: игроки видят и берут</b>' : ''}</p>`;
+  if (rows.length) ex += `<div class="m70-scroll">${rows.map(r => chip74('cn782-del', r.ix, esc(r.n) + ' ✕')).join('')}</div>`;
+  const c = (L && L.c) || {};
+  ex += `<div class="m74-txrow m782-coins">${['gold', 'silver', 'copper'].map(k => `<input class="paper-input" id="m782-${k}" type="number" min="0" max="99999" inputmode="numeric" value="${+c[k] || ''}" placeholder="${COIN782[k]}">`).join('')}<button type="button" class="m70chip gold" data-m="cn782-coins">Монеты</button></div>
+    <div class="m74-txrow"><input class="paper-input" id="m782-q" maxlength="40" value="${esc(M782.q)}" placeholder="Предмет: зелье, меч, отмычки…"><button type="button" class="m70chip gold" data-m="cn782-q">Найти</button><button type="button" class="m70chip" data-m="cn782-own">＋ Своё</button></div>`;
+  const found = M782.q ? searchItems(M782.q) : [];
+  if (M782.q) ex += `<div class="m70-scroll">${found.length ? found.map(d => chip74('cn782-add', d.id, '＋ ' + esc(d.name))).join('') : '<span class="m70chip flat">в каталоге нет — «＋ Своё»</span>'}</div>`;
+  const keys = gmMap70().items.filter(x => x !== i && W74(x).ky).map(x => W74(x).ky);
+  ex += `<div class="m70-scroll">${keys.map(k => chip74('cn782-addk', k, '＋ 🗝 ' + esc(k))).join('')}${chip74('cn782-roll', '', '🎲 Случайно')}${chip74('cn782-clr', '', 'Пусто')}${chip74('cn782-rnd', '', 'Случайная при открытии', W.lt == null)}</div>`;
+  return { ch: ch.join(''), extra: ex };
+}
+function ltEdit782(i) { const W = w74(i); if (!W.lt || typeof W.lt !== 'object') W.lt = { c: {}, it: [] }; W.lt.c = W.lt.c || {}; W.lt.it = W.lt.it || []; return W.lt; }
+function addIt782(i, it) {
+  const L = ltEdit782(i), same = L.it.find(x => x.name === it.name && x.ref === it.ref && !x.curse);
+  if (same) same.qty = (same.qty || 1) + 1; else L.it.push(it);
+}
+
+/* ---------- мастер: открытие, провалы, просьбы игроков ---------- */
+openChest74 = function (it, uid, key, name) {
+  const W = w74(it);
+  it.o = 1;
+  const links = (W.lnk || []).length ? fireLinks74(it, key) : [];
+  if (W.lt == null) W.lt = rollLoot74(it.k === 'crate' ? 'pockets' : 'chest');
+  const rows = ltList782(lt782(it));
+  if (key) gmFx71({ k: 'say', b: key, x: rows.length ? 'Открыто!' : 'Пусто…', h: rows.length ? 0 : 1 });
+  gmLog(name, `открывает: ${(A74(it).n || 'контейнер').toLowerCase()}. Внутри: ${rows.length ? rows.map(r => r.n).join(', ') : 'пусто'}.${links.length ? ' ' + links.join(', ') + '.' : ''}`, 'info');
+};
+function failLock782(it, a, uid, key, name, dc, n) {
+  const W = W74(it), F = W.fb || {}, p = playerById(uid);
+  if (a.m === 'p' && F.br && n <= dc - 5 && p) {
+    const t = (p.sheet.inventory || []).find(x => /воровск|отмыч/i.test(x.name || ''));
+    if (t) { gmSend(p, { type: 'qty', id: t.id, d: -1 }, true); gmLog(name, `ломает ${t.name.toLowerCase()} в замке.`, 'error'); gmFx71({ k: 'say', b: key, x: 'Хрусь! Отмычки сломаны', h: 1 }); }
+  }
+  if (F.al) {
+    gmLog(name, `поднимает тревогу у «${A74(it).n || 'замка'}»!`, 'error');
+    gmFx71({ k: 'say', b: key, x: 'Тревога!', h: 1 });
+    toast(`Тревога! ${name} шумит у замка (${A74(it).n || 'замок'}).`, 'error');
+  }
+}
+function gmAct782(uid, a) {
+  const m = gmMap70(), V = gmView70(), key = 'p:' + uid, me = V.toks.find(x => x.key === key && x.placed), p = playerById(uid), name = (p && p.sheet.name) || 'Игрок';
+  const it = m.items.find(x => x.id === a.it); if (!it || !me || !p) return;
+  if (!reach74(it, Object.assign({}, me, { s: (me.s || 1) + 0.5 }))) { gmFx71({ k: 'say', b: key, x: 'Далеко!', h: 1 }); return; }
+  const W = w74(it), A = A74(it), say = (x, h) => gmFx71({ k: 'say', b: key, x, h: h ? 1 : 0 });
+  const unlock = why => { W.lk = 0; if (isCn782(it)) openChest74(it, uid, key, name); else { it.o = 1; gmLog(name, `${why}: ${(A.n || 'дверь').toLowerCase()} открыта.`, 'info'); } };
+  if (a.k === 'key782') {
+    const has = W.ky && (p.sheet.inventory || []).some(x => String(x.name || '').trim().toLowerCase() === String(W.ky).trim().toLowerCase());
+    if (!(+W.lk > 0) || it.o) { say('Не заперто', 0); }
+    else if (has) { say('Ключ подошёл', 0); unlock('отпирает ключом'); }
+    else { say('Ключ не подходит', 1); gmLog(name, `пробует ключ к «${A.n || 'замку'}» — не подходит.`, 'info'); }
+  } else if (a.k === 'knk782') {
+    const scr = (p.sheet.inventory || []).find(x => /открыван|отпиран|knock/i.test(x.name || ''));
+    if (a.src === 'scroll' && !scr) { say('Свитка нет', 1); return gmSave(); }
+    if (a.src === 'scroll') gmSend(p, { type: 'qty', id: scr.id, d: -1 }, true);
+    if (!(+W.lk > 0) && !(it.k === 'gate' && !it.o)) { say('Не заперто', 0); return gmSave(); }
+    say('ТУК! Замок открыт', 0); gmLog(name, `«Открывание»: громкий стук слышен издалека.`, 'error');
+    unlock('«Открывание»');
+  } else if (a.k === 'tk782') {
+    if (!isCn782(it) || !it.o) { say('Закрыто', 1); return gmSave(); }
+    const L = lt782(it); if (!L) { say('Пусто', 1); return gmSave(); }
+    const take = { c: {}, it: [] };
+    if (a.ix === 'all') { take.c = L.c || {}; take.it = L.it || []; L.c = {}; L.it = []; }
+    else if (a.ix === 'c') { take.c = L.c || {}; L.c = {}; }
+    else {
+      let j = +a.ix; const its = L.it || [];
+      if (!its[j] || (a.nm && its[j].name !== a.nm)) j = its.findIndex(x => x.name === a.nm);
+      if (j >= 0) take.it = its.splice(j, 1);
+    }
+    const txt = giveLoot74(p, (take.it.length || Object.values(take.c).some(Boolean)) ? take : null, 'берёт');
+    say(txt === 'ничего' ? 'Уже забрали' : 'В сумку!', txt === 'ничего');
+    if (!ltList782(L).length) W.lt = 0;
+  }
+  gmSave();
+}
+const _cleanAct782 = cleanAct71;
+cleanAct71 = function (a) {
+  const o = _cleanAct782(a); if (!a || !/782$/.test(String(a.k || ''))) return o;
+  o.ix = a.ix === 'all' || a.ix === 'c' ? a.ix : Math.max(0, Math.min(99, Math.round(+a.ix) || 0));
+  o.nm = (typeof a.nm === 'string' ? a.nm : '').slice(0, 40); o.src = a.src === 'scroll' ? 'scroll' : 'spell';
+  return o;
+};
+const _applyAct782 = applyAct71;
+applyAct71 = function (uid, a) {
+  if (a && /782$/.test(String(a.k || ''))) { try { if (gmRules74().dor) gmAct782(uid, a); } catch (er) { /* ignore */ } return; }
+  return _applyAct782.apply(this, arguments);
+};
+
+/* ---------- игрокам: содержимое только открытого контейнера, и флаг «контейнер» ---------- */
+const _pubData782 = pubData70;
+pubData70 = function () {
+  const d = _pubData782(); if (!d || !d.it) return d;
+  const byId = {}; gmMap70().items.forEach(i => { byId[String(i.id)] = i; });
+  d.it.forEach(a => {
+    const i = byId[a[0]]; if (!i || !isCn782(i)) return;
+    const x = a[9] && typeof a[9] === 'object' ? a[9] : {};
+    if (W74(i).cn) x.cn = 1;
+    if (i.o) { const L = lt782(i); x.lt = L ? { c: L.c || {}, it: (L.it || []).map(t => ({ name: t.name, qty: t.qty || 1 })) } : 0; }
+    if (Object.keys(x).length) { if (a.length < 9) a[8] = 0; a[9] = x; }
+  });
+  return d;
+};
+
+/* ---------- игрок: меню у контейнера и замка ---------- */
+const _popHtml782 = popHtml70;
+popHtml70 = function (V) {
+  let h = _popHtml782(V);
+  const P = M70.pop, me = V && !V.gmv && V.toks.find(t => t.me);
+  if (!h || !P || !me || P.key || P.st71 || P.st72 || P.st74) return h;
+  if (!rules74(V).dor) return h;
+  const it = hitItem70(V, P.p); if (!it) return h;
+  const A = A74(it), W = W74(it), T = turn70(V), near = reach74(it, me), wait = T.limit && !T.can, cn = isCn782(it);
+  const why = wait ? 'в свой ход' : !near ? 'подойдите вплотную' : '';
+  const add = [];
+  if (cn && it.o) {
+    const rows = ltList782(W.lt || null);
+    add.push(`<p class="m70pop-n">${esc(A.n || 'Контейнер')}: ${rows.length ? 'открыт' : 'пусто'}.</p>`);
+    rows.forEach(r => add.push(btn72('p782-tk', it.id + '|' + r.ix, esc(r.n), !near ? 'подойдите вплотную' : 'взять', !near)));
+    if (rows.length > 1) add.push(btn72('p782-tk', it.id + '|all', 'Забрать всё', !near ? 'подойдите вплотную' : 'в вашу сумку', !near));
+  } else if (cn && !W.lk) add.push(btn72('p74-chest', it.id, 'Открыть', why || 'посмотреть, что внутри', !!why));
+  else if (cn) {
+    add.push(btn72('p74-chk', it.id + '|p', '🔒 Вскрыть замок', why || (tools74() ? 'Ловкость рук + инструменты · действие' : 'нужны воровские инструменты'), !!why || !tools74()));
+    add.push(btn72('p74-chk', it.id + '|f', 'Сломать замок', why || 'Сила (Атлетика) · действие · шумно', !!why));
+  }
+  if ((cn || A.door) && W.lk && !it.o) {
+    const ks = keyItems782(), kn = knock782();
+    if (ks.length) add.push(btn72('p782-key', it.id, '🗝 Открыть ключом', why || (ks.length === 1 ? esc(ks[0].name) : `ключей: ${ks.length}`) + ' · действие', !!why));
+    if (kn) add.push(btn72('p782-knk', it.id + '|' + kn.src, '✨ Открывание', why || (kn.src === 'scroll' ? 'свиток сгорит' : esc(kn.n)) + ' · громко', !!why));
+  }
+  if (!add.length) return h;
+  return h.replace(/(<\/div>)/, `$1${add.join('')}`);
+};
+const _act782 = act70;
+act70 = function (cmd, b) {
+  const v = b && b.dataset ? b.dataset.v : '', isGm = appRole() === 'gm';
+  const m = isGm ? gmMap70() : null, i = m && m.items.find(x => x.id === M70.selItem);
+  const done = () => { gmSave(); paint70(); };
+  const inp = id => { const e = $(id); return e ? String(e.value || '').trim() : ''; };
+  switch (cmd) {
+    case 'p782-key': plAct74('key782', v, { cost: 1 }); return;
+    case 'p782-knk': { const [id, src] = String(v).split('|'); plAct74('knk782', id, { cost: 1, a: { src } }); return; }
+    case 'p782-tk': {
+      const [id, ix] = String(v).split('|'), V = M70.V, it = V && V.items.find(x => x.id === id), L = it && W74(it).lt;
+      const nm = L && ix !== 'all' && ix !== 'c' && L.it && L.it[+ix] ? L.it[+ix].name : '';
+      plAct74('tk782', id, { a: { ix: ix === 'all' || ix === 'c' ? ix : +ix, nm } }); return;
+    }
+    case 'cn782-on': if (i) { const W = w74(i); if (W.cn) delete W.cn; else W.cn = 1; done(); } return;
+    case 'cn782-o': if (i) { if (i.o) i.o = 0; else { i.o = 1; w74(i).lk = 0; if (W74(i).lt == null) w74(i).lt = rollLoot74('chest'); } done(); } return;
+    case 'cn782-ky': if (i) { const W = w74(i); if (W.ky) delete W.ky; else W.ky = keyName782(i); done(); } return;
+    case 'cn782-kyn': if (i) { const n = inp('m782-ky').slice(0, 40); if (n) { w74(i).ky = n; toast('Имя ключа сохранено.', 'info'); } done(); } return;
+    case 'cn782-kg': if (i && W74(i).ky) { const p = playerById(v); if (p) { gmSend(p, { type: 'give', item: { name: W74(i).ky, type: 'Всякое', weight: 0, qty: 1, rarity: 'common', desc: `Отпирает: ${(A74(i).n || 'замок').toLowerCase()}.` } }, true); toast(`${p.sheet.name || 'Игрок'} получает «${W74(i).ky}».`, 'heal'); } } return;
+    case 'cn782-fb': if (i) { const W = w74(i); W.fb = Object.assign({}, W.fb || {}); if (W.fb[v]) delete W.fb[v]; else W.fb[v] = 1; done(); } return;
+    case 'cn782-del': if (i) { const L = ltEdit782(i); if (v === 'c') L.c = {}; else L.it.splice(+v, 1); done(); } return;
+    case 'cn782-coins': if (i) { const L = ltEdit782(i); ['gold', 'silver', 'copper'].forEach(k => { const n = Math.max(0, Math.min(99999, parseInt(inp('m782-' + k)) || 0)); if (n) L.c[k] = n; else delete L.c[k]; }); done(); } return;
+    case 'cn782-q': M782.q = inp('m782-q').slice(0, 40); paint70(); return;
+    case 'cn782-add': if (i) { const d = ITEMS.find(x => x.id === v); if (d) addIt782(i, { ref: d.id, name: d.name, type: d.type, weight: d.weight, qty: 1, rarity: d.rarity || 'common' }); done(); } return;
+    case 'cn782-own': if (i) { const n = inp('m782-q').slice(0, 40); if (!n) { toast('Впишите название предмета.', 'info'); return; } addIt782(i, { name: n, type: 'Всякое', weight: 0, qty: 1, rarity: 'common' }); M782.q = ''; done(); } return;
+    case 'cn782-addk': if (i) { addIt782(i, { name: v, type: 'Всякое', weight: 0, qty: 1, rarity: 'common', desc: 'Ключ от замка.' }); done(); } return;
+    case 'cn782-roll': if (i) { w74(i).lt = rollLoot74(i.k === 'crate' ? 'pockets' : 'chest'); done(); } return;
+    case 'cn782-clr': if (i) { w74(i).lt = 0; done(); } return;
+    case 'cn782-rnd': if (i) { delete w74(i).lt; done(); } return;
+    default: break;
+  }
+  return _act782(cmd, b);
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
