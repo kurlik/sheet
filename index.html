@@ -4354,7 +4354,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.33.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.34.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -26658,6 +26658,108 @@ select.pick{border-image:url(img/aa3155b57f97.webp) 0 110 0 40 fill / 0 44px 0 1
 .m714-sh{background:linear-gradient(#1a1612,#0e0c0a)}
 .m715-tab{border:1px solid #3b3022;background:#1b1713}
 .m723-it img{background:#0c0a09}
+` });
+/* ---------- 7.34: тема B «Карандаш» ----------
+   Набросок графитом на пергаменте: рамки, кнопки и иконки нарисованы от руки, красный и бирюзовый цветными карандашами.
+   Шрифты (набор B2, выбор Андрея): заголовки Amatic SC, текст Neucha. Арт из Flow: tools/theme_art_b.py
+   (белая бумага → полупрозрачный графит, поэтому все детали ложатся на пергамент как нарисованные на нём).
+   Каркас style.css тёмный, поэтому тут же светлые цвета текста и плашек. Карта остаётся рендером. */
+theme729('b', { name: 'Карандаш', color: '#e9dcbc', css: `
+@font-face{font-family:'Amatic SC';font-weight:700;font-display:swap;src:url(img/5d2c9969d7ce.woff2) format('woff2')}
+@font-face{font-family:'Neucha';font-weight:400;font-display:swap;src:url(img/bb80ba3db92f.woff2) format('woff2')}
+:root{color-scheme:light;--gold:#5b4128;--gold-dim:#8c7556;--text:#2a241d;--muted:#6f6352;--bg:#e9dcbc;--panel:#e2d3ae;--blood:#b23a2c;
+  --ink:#2a241d;--ink-soft:#5f513e;--th-head:'Amatic SC','Neucha',cursive;--th-body:'Neucha',system-ui,sans-serif;
+  --q-card:rgba(255,250,235,.35);--q-card2:rgba(255,250,235,.5);--q-line:rgba(70,55,35,.35);--q-gold:rgba(70,55,35,.45)}
+html,body{background:var(--bg)}
+body{font-family:var(--th-body);color:var(--text);background:#e9dcbc url(img/3dc8b4feed36.webp) repeat;background-size:512px}
+h2,h3,h4,.scroll-title,.nameplate input,.nav button span,.stat-name,.btn,.sec-head,.menu-item>span,.seg-btn,.filter,.chip,.pill{font-family:var(--th-head);font-weight:700;letter-spacing:.02em}
+h2{font-size:24px;color:var(--gold)}
+.frame{border:18px solid transparent!important;border-image:url(img/d438bb26dd29.webp) 100 fill / 26px stretch!important;border-radius:0;
+  background:none!important;padding:6px 8px}
+.btn{border-width:9px 12px;border-image:url(img/bd1fd63c9aa9.webp) 54 64 fill / 12px 16px stretch;color:var(--ink);font-size:20px;text-shadow:none}
+.btn.danger{border-image-source:url(img/0e467bf0d356.webp);color:#5a130b}
+.medallion,.xpm-medal,.pc-lvl{background-image:url(img/e30c662a9322.webp)}
+.medallion,.xpm-medal{font-family:var(--th-head);font-weight:700;color:var(--ink);text-shadow:none;font-size:32px}
+/* шапка, имя, нижнее меню */
+.topbar{background-image:url(img/baf9e5132f67.webp)}.kb-top{background-image:url(img/baf9e5132f67.webp)}
+.nameplate{background-image:url(img/ff6f4a5e1f09.webp);padding:0 16%}
+.nameplate input{font-family:var(--th-head);font-weight:700;font-size:30px;color:var(--ink);text-shadow:none}
+.nav{background:url(img/56950b36d721.webp) center top/100% 84px no-repeat,#e9dcbc url(img/3dc8b4feed36.webp) repeat;background-size:100% 84px,512px}
+.nav [data-tab=character] img{content:url(img/be74642bd05f.webp)}
+.nav [data-tab=combat] img{content:url(img/18734468ed5e.webp)}
+.nav [data-tab=inventory] img{content:url(img/717aced9c43b.webp)}
+.nav [data-tab=chat] img{content:url(img/7e6a2b802e48.webp)}
+.nav [data-gmtab=party] img{content:url(img/80849f2d92ec.webp)}
+.nav [data-gmtab=combat] img{content:url(img/18734468ed5e.webp)}
+.nav [data-gmtab=notes] img{content:url(img/5f57898b6f1e.webp)}
+.nav [data-gmtab=chat] img{content:url(img/7e6a2b802e48.webp)}
+.nav img{height:30px}.nav button{color:var(--muted);font-size:17px}.nav button.active{color:var(--ink)}
+.nav .off-img{opacity:.45}.nav button.active .on-img{filter:none}
+.lock-btn .lock-open{content:url(img/5aebca558466.webp)}.lock-btn .lock-closed{content:url(img/3d038f8f9e7b.webp)}.lock-btn img{height:34px;filter:none}
+.menu-btn{background-image:url(img/373be761e181.webp);background-size:26px;filter:none}
+.back-ico{background-image:url(img/ce856c3c5104.webp);width:54px;height:22px}
+.x-btn{background:none;font-size:0}.x-btn::before{content:"✕";font-size:19px;color:var(--ink)}
+.menu{border-image-source:url(img/d438bb26dd29.webp);border-image-slice:100 fill;border-width:14px;border-image-width:22px;background:#eadfc2;color:var(--ink)}
+/* поля, полоски, плашки */
+select.pick{border-image:url(img/ced0e50f4323.webp) 0 110 0 30 fill / 0 40px 0 10px stretch;color:var(--ink)}
+.text-input,body.locked select.pick{border-image:url(img/286b6f670be9.webp) 0 30 fill / 0 10px stretch;color:var(--ink)}
+.bar{border-image:url(img/214874284461.webp) 0 52 fill / 0 calc(var(--h) * .6) stretch}.xpm-bar{border-image-source:url(img/214874284461.webp);border-image-slice:0 52 fill}
+.fill-hp{background:repeating-linear-gradient(-55deg,rgba(178,58,44,.85) 0 2px,rgba(178,58,44,.45) 2px 4px)!important}
+.fill-xp{background:repeating-linear-gradient(-55deg,rgba(120,92,40,.8) 0 2px,rgba(120,92,40,.4) 2px 4px)!important}
+.fill-mp-martial,.bar .fill:not(.fill-hp):not(.fill-xp){background:repeating-linear-gradient(-55deg,rgba(26,140,130,.85) 0 2px,rgba(26,140,130,.45) 2px 4px)!important}
+.pill,.chip,.filter{border-image:url(img/9e441fb2444c.webp) 0 40 fill / 0 16px stretch;color:var(--ink)}
+.filter.on{border-image-source:url(img/9e441fb2444c.webp);border-image-slice:0 40 fill;color:#000;background:rgba(26,140,130,.18);border-radius:17px}
+.pill.mut{color:#5b3d86}.pill.crisis{color:#9a2c20}
+.stepper{background:none;border-style:solid;border-width:0;border-image:url(img/9e441fb2444c.webp) 0 40 fill / 0 28px stretch;color:var(--ink)}
+.switch{background-image:url(img/307cc61356e3.webp)}.switch::after{background-image:url(img/0af9b4e5648a.webp);filter:none}.switch.on{background-image:url(img/993755bebd2d.webp)}.switch.on::after{opacity:0}
+.pips i{background-image:url(img/fc2ca63c4482.webp)}.pips i.on{background-image:url(img/cd7c48481e40.webp)}.dot{background-image:url(img/fc2ca63c4482.webp)}.dot.on{background-image:url(img/cd7c48481e40.webp)}
+.init-n{background-image:url(img/e30c662a9322.webp);font-family:var(--th-head);font-weight:700;color:var(--ink);text-shadow:none}
+.medallion.hot,.xpm-medal.flash{background-image:url(img/b50c2fa2492a.webp)}
+/* иконки */
+.ico.ic-book{background-image:url(img/c603198c43e5.webp)}.ico.ic-tutorial{background-image:url(img/be8a9d93e626.webp)}.ico.ic-settings{background-image:url(img/d0375f8df3b6.webp)}.ico.ic-session{background-image:url(img/a7320660cbfc.webp)}.ico.ic-role{background-image:url(img/08478fb6fd3e.webp)}.ico.ic-save{background-image:url(img/2c1e0c47bb0f.webp)}.ico.ic-load{background-image:url(img/58aa017473c0.webp)}.ico.ic-pin{background-image:url(img/91cd0d8a44b7.webp)}.ico.ic-reset{background-image:url(img/f4e465f1194c.webp)}.ico.ic-about{background-image:url(img/0f45dd258edb.webp)}.ico.ic-hp{background-image:url(img/038cfc7a3ffb.webp)}.ico.ic-mp{background-image:url(img/ca17ca046f4f.webp)}.ico.ic-ac{background-image:url(img/7454f35a1b81.webp)}.ico.ic-speed{background-image:url(img/3aa18a3395a2.webp)}.ico.ic-init{background-image:url(img/b54aaf5035d0.webp)}.ico.ic-d20{background-image:url(img/5a129e4e27b4.webp)}.ico.ic-mutation{background-image:url(img/5b304cb58d2d.webp)}.ico.ic-crisis{background-image:url(img/de9555b33014.webp)}.ico.ic-seen{background-image:url(img/168e24b9f081.webp)}.ico.ic-hidden{background-image:url(img/01ef7e4d8216.webp)}.ico.ic-mask{background-image:url(img/cd51beac1be6.webp)}.ico.it-all{background-image:url(img/3a45c56aa3da.webp)}.ico.it-weapon{background-image:url(img/9bc4e8afd7b5.webp)}.ico.it-armor{background-image:url(img/ad0dfa41c902.webp)}.ico.it-potion{background-image:url(img/18714992bed6.webp)}.ico.it-consumable{background-image:url(img/a38cbf71ed26.webp)}.ico.it-tool{background-image:url(img/f679edb66d1b.webp)}.ico.it-quest{background-image:url(img/fc7f85eee39e.webp)}.ico.lock-closed{background-image:url(img/3d038f8f9e7b.webp)}
+.slot[data-slot=head]::after{background-image:url(img/be74642bd05f.webp)}.slot[data-slot=chest]::after{background-image:url(img/ad0dfa41c902.webp)}.slot[data-slot=arms]::after{background-image:url(img/8ad84fef33c7.webp)}.slot[data-slot=legs]::after{background-image:url(img/e5306c1a5310.webp)}.slot[data-slot=main]::after{background-image:url(img/9bc4e8afd7b5.webp)}.slot[data-slot=off]::after{background-image:url(img/038063bdce4a.webp)}
+.kb{background:var(--bg) url(img/3dc8b4feed36.webp) repeat;background-size:512px;color:var(--text)}
+/* характеристики: нарисованные круги */
+.stat{padding-top:27px}.stat::before{background:url(img/e30c662a9322.webp) center 2px/98px 98px no-repeat}
+.stat-name{font-weight:700;font-size:19px;color:var(--ink-soft);letter-spacing:.06em}.stat-total{font-family:var(--th-head);font-weight:700;font-size:38px;color:var(--ink);text-shadow:none}
+.stat-mod{top:83%%;min-width:34px;padding:0 7px;border-radius:10px;background:#efe4c8;border:1.5px solid var(--gold-dim);color:var(--ink);font-family:var(--th-head);font-weight:700;font-size:19px;text-shadow:none}
+.divider{height:14px;opacity:.75!important;background:url(img/fc2ca63c4482.webp) center/12px no-repeat,linear-gradient(90deg,transparent,var(--gold-dim) 30%,var(--gold-dim) 70%,transparent) center/100% 1px no-repeat}
+/* экран выбора роли */
+.role,.role:is(*){background-image:url(img/715043ff6739.webp);background-color:#e9dcbc}
+@media (min-aspect-ratio:1/1){.role{background-image:url(img/715043ff6739.webp)}}
+.role-btn{position:relative}.role-btn[data-role=gm] img{content:url(img/cc8505055250.webp)}.role-btn[data-role=player] img{content:url(img/c2150dc06c87.webp)}
+.role-btn img{filter:none}
+.role-btn::after{position:absolute;left:30%;right:6%;top:50%;transform:translateY(-50%);font:700 clamp(34px,11vw,52px)/1 var(--th-head);letter-spacing:.06em;color:var(--ink);text-align:center;pointer-events:none}
+.role-btn[data-role=gm]::after{content:"Мастер"}.role-btn[data-role=player]::after{content:"Игрок"}
+.role-hint{font-family:var(--th-head);font-weight:700;font-size:28px;color:var(--ink);text-shadow:none}
+/* чат */
+.chat-dot{background:#b23a2c}.chat-on{background:#4f8f3a;box-shadow:0 0 0 2px #e9dcbc}.chat-count{background:#5b4128;color:#f3ead2}.chat-day span{border-color:rgba(70,55,35,.35);background:#efe4c8;color:var(--ink-soft)}
+.chat-row{border-color:rgba(70,55,35,.35);background:rgba(255,250,235,.35)}.chat-row.unread{border-color:#5b4128;background:rgba(255,250,235,.6)}.chat-row.unread .chat-row-main span{color:var(--ink)}
+.chat-ava.all{border-color:var(--gold-dim);color:var(--gold)}.chat-input:focus{border-color:var(--gold-dim)}
+.toast{background:#f1e6cb;border-color:#8c7556;color:var(--ink)}
+/* тёмные плашки каркаса → бумага */
+.hud-stat,.pc-ac{background:rgba(255,250,235,.45);border:1px solid rgba(70,55,35,.35);color:var(--ink)}
+.suggest,.por76-cv,.por76-img,.por76-none{background:#efe4c8;color:var(--ink)}
+.chat-ava{background:radial-gradient(circle at 35% 30%,#f6eed8,#d9c9a2);color:var(--ink)}
+/* карта и экран на стол остаются тёмным рендером: внутри них возвращаем тёмную палитру каркаса */
+.map70,body.tv76{color-scheme:dark;--gold:#e0bd6e;--gold-dim:#a88a4c;--text:#e8dfc6;--muted:#9e957f;--ink:#3a2716;--ink-soft:#6b5236;--bg:#05060a;--panel:#10131b;
+  --q-card:#111a29;--q-card2:#172236;--q-line:#26354d;--q-gold:rgba(224,189,110,.55);color:var(--text);font-family:system-ui,sans-serif}
+body.tv76{background:#05060a}
+/* светлый текст каркаса → графит и красный карандаш */
+.card-sub,.slot-item,.stat-drop-in,.pc-id b,.pc71-nums b,.pc-ac b,.chat-row-main b,.coin input,.demo-note,.pc-req{color:var(--ink)}
+.stat-more{color:var(--gold)}.role-hint.small{color:var(--ink-soft)}
+.init-main b.foe,.warn-list li,.chat-net{color:#9a2c20}
+.coin,.demo-note,.pc-req{background:rgba(255,250,235,.5);border-color:rgba(70,55,35,.4)}
+.orc-btn{background:rgba(255,250,235,.5);color:var(--ink)}
+.rar-common{color:var(--ink)}.rar-uncommon{color:#2f6b24}.rar-rare{color:#1f5a99}.rar-epic{color:#6b3596}.rar-legendary{color:#a65a10}
+.kb-sec{color:var(--ink)}.kb-link{background:rgba(255,250,235,.45);border-color:rgba(70,55,35,.35)}
+.kb-top .kb-back{background:none}.kb-top .back-ico,.back-ico{filter:none}
+/* окна-свитки: лист пергамента в карандашной рамке вместо свитка со скалками */
+.modal-backdrop{background:rgba(40,30,15,.55)}
+.scroll{border-width:20px;border-image:url(img/d438bb26dd29.webp) 100 fill / 26px stretch;background:#efe4c8 url(img/3dc8b4feed36.webp) repeat;background-size:512px;
+  background-clip:padding-box;filter:drop-shadow(0 8px 18px rgba(40,30,15,.45))}
+.roller{display:none!important}
+.scroll-title{font-family:var(--th-head);font-weight:700;font-size:28px;color:var(--ink)}
 ` });
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
