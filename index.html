@@ -4354,7 +4354,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.39.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.40.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -27130,6 +27130,43 @@ bkApplyGm684 = function (g) {
   } catch (e) { console.error(e); }
   gmSave();
   if (got.length) toast('Из файла: ' + got.join(', ') + '.', 'heal');
+};
+/* ===== 7.40.0: касание карты не жмёт меню, открытое этим же касанием (issue #65) =====
+   Меню касания (m70-pop) открывается в pointerup, а браузер следом шлёт click в ту же точку.
+   1) click в ту же точку в течение TAPG740 мс после касания карты гасится, если попал не в саму карту;
+   2) меню не ложится на палец: не помещается ни сверху, ни снизу — встаёт на сторону просторнее и прокручивается. */
+const TAPG740 = 450;
+let tap740 = null, down740 = null;
+document.addEventListener('pointerdown', e => {
+  const svg = $('m70-svg');
+  down740 = e.isTrusted && M70.open && svg && (e.target === svg || svg.contains(e.target)) ? { x: e.clientX, y: e.clientY } : null;
+}, true);
+document.addEventListener('pointerup', e => {
+  const d = down740; down740 = null;
+  if (e.isTrusted && d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10) tap740 = { x: e.clientX, y: e.clientY, t: performance.now() };
+}, true);
+window.addEventListener('click', e => {
+  const T = tap740; if (!e.isTrusted || !T) return;
+  if (performance.now() - T.t > TAPG740 || Math.hypot(e.clientX - T.x, e.clientY - T.y) > 16) return;
+  tap740 = null;
+  const t = e.target, svg = $('m70-svg');
+  if (svg && t && (t === svg || svg.contains(t) || t.id === 'm70-stage')) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+}, true);
+const _placePop740 = placePop70;
+placePop70 = function () {
+  const r = _placePop740.apply(this, arguments);
+  const el = $('m70-pop'), v = M70.view, P = M70.pop, st = $('m70-stage');
+  if (!el || !st || !v || !P || el.classList.contains('hidden')) return r;
+  el.style.maxHeight = ''; el.style.overflowY = '';
+  const H = st.clientHeight, x = (P.p.x - v.x) * v.s, y = (P.p.y - v.y) * v.s, gap = 24;
+  const top = el.offsetTop, hh = el.offsetHeight, left = el.offsetLeft, w = el.offsetWidth;
+  const covers = y > top - gap && y < top + hh + gap && x > left - gap && x < left + w + gap;
+  if (!covers) return r;
+  const up = y - gap - 6, down = H - y - gap - 6;
+  if (up >= down) { const m = Math.max(80, up); el.style.maxHeight = m + 'px'; el.style.overflowY = 'auto'; el.style.top = Math.max(6, y - gap - Math.min(hh, m)) + 'px'; }
+  else { el.style.maxHeight = Math.max(80, down) + 'px'; el.style.overflowY = 'auto'; el.style.top = (y + gap) + 'px'; }
+  return r;
 };
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
