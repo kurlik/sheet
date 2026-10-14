@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.45.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.46.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -16621,6 +16621,8 @@ function tokSeen73(C, viewers, t) {
 function blind73(t) { return (t.cd || []).includes('blinded'); }
 function viewers73(V) { return V.toks.filter(t => t.side === 'a' && t.placed && !t.down && !blind73(t)); }
 function fogOn73(V) { return !!(V && rules73(V.r73).fog && V.toks.some(t => t.side === 'a' && t.placed)); }
+/* 7.46 (#74): что уходит игрокам — по самому правилу тумана. Отряда на этаже нет — игроки ничего не видят (а не всё) */
+function fogPub73(V) { return !!(V && rules73(V.r73).fog); }
 
 /* ---------- тёмное зрение, пассивное Восприятие ---------- */
 function dvTxt73(list) { let v = 0; list.forEach(s => { const m = String(s || '').match(/[Тт]ёмное зрение[^\d]{0,30}(\d+)\s*м/); if (m) v = Math.max(v, +m[1]); }); return v; }
@@ -16701,7 +16703,7 @@ pubData70 = function () {
   (d.it || []).forEach(a => { if (off[a[0]]) a[8] = 1; });
   const fill = a => { for (let n = 8; n < 12; n++) if (a[n] === undefined) a[n] = n === 9 || n === 11 ? 0 : ''; };
   V.toks.forEach(t => { const a = d.tk[t.key]; if (!a) return; if (t.lt || t.dv) { fill(a); a[10] = t.lt || ''; a[11] = t.dv || 0; } });
-  const fg = [], fog = fogOn73(V), P = fog ? party73(V) : null;
+  const fg = [], fog = fogPub73(V), P = fog ? party73(V) : null;
   V.toks.forEach(t => {
     const a = d.tk[t.key]; if (!a || t.side === 'a') return;
     if (R.stl && t.hidC) {   // скрытый враг: только заметившим, остальным его нет
@@ -22927,7 +22929,7 @@ pubData70 = function () {
   if (fg.length) d.fg = fg;
   ['c77', 'ic77', 'bon79'].forEach(n => { const o = d[n]; if (o && typeof o === 'object') { Object.keys(o).forEach(k => { if (!d.tk[k]) delete o[k]; }); if (!Object.keys(o).length) delete d[n]; } });
   P713.priv = priv;
-  try { const V = gmView70(); if (!all && fogOn73(V)) layout713(d, V); } catch (e) { /* туман не должен ронять показ карты */ }
+  try { const V = gmView70(); if (!all && fogPub73(V)) layout713(d, V); } catch (e) { /* туман не должен ронять показ карты */ }
   return d;
 };
 /* лично заметившим: только когда их набор поменялся; после перезапуска мастера — один раз каждому */
