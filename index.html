@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.50.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.51.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -28257,6 +28257,56 @@ body.p750s #stats-grid{display:none}
 .r750-h{margin:6px 2px 0;font-size:13px;line-height:1.4;color:var(--muted)}
 `;
   const st = document.createElement('style'); st.id = 'pilot750'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.51: «ПЕРСОНАЖ: ЧЕРТЫ ОДНОЙ СТРОКОЙ» (путь Б, экран 3, выпуск 2, тот же переключатель, что 7.50)
+   Состояния: ux-research/audit-4/ekran-3/plan.md. Только вид: под названием черты — её суть одной строкой
+   (первая фраза описания, у мутации и кризиса «＋ плюс · − минус»), полностью — по нажатию, как раньше.
+   Над группами — заголовки по источнику (Раса, Класс, Предыстория…), ярлык-«тег» в новом виде не нужен.
+   ===================================================================== */
+function plain751(t, d) {
+  const s = fillText(String(t || ''), d).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (a, k, l) => (l || k).trim());
+  const m = s.match(/^.*?[.!?](?=\s|$)/);
+  const one = (m ? m[0] : s).trim();
+  return one.length > 140 ? one.slice(0, 137).replace(/\s+\S*$/, '') + '…' : one;
+}
+function traits751() {
+  const box = $('traits-list'); if (!box) return;
+  const on = pilot750() && box.querySelector('.trait-row');
+  document.body.classList.toggle('p751', !!on);
+  if (!on) return;
+  const d = derive(), T = {}; allTraits(d).forEach(t => { T[t.key] = t; });
+  let last = '';
+  box.querySelectorAll(':scope > .trait-row').forEach(row => {
+    const b = row.querySelector('[data-act="trait-info"]'), t = b && T[b.dataset.key]; if (!t) return;
+    /* заголовок группы перед первой чертой нового источника */
+    const prev = row.previousElementSibling;
+    const want = t.type !== last ? t.type : '';
+    last = t.type;
+    if (prev && prev.classList.contains('g751')) { if (!want) prev.remove(); else if (prev.textContent !== want) prev.textContent = want; }
+    else if (want) { const g = document.createElement('div'); g.className = 'g751'; g.textContent = want; row.before(g); }
+    const txt = t.pair ? `＋ ${plain751(t.pair[0], d)} · − ${plain751(t.pair[1], d)}` : plain751(t.desc, d);
+    let s = b.querySelector('.s751');
+    if (!txt) { if (s) s.remove(); return; }
+    if (!s) { s = document.createElement('span'); s.className = 's751'; b.querySelector('.trait-title').after(s); }
+    if (s.textContent !== txt) s.textContent = txt;
+  });
+}
+const _render751 = render;
+render = function () { _render751(); try { traits751(); } catch (e) { console.error(e); } };
+
+(() => {
+  const css = `
+body.p751 #traits-list .trait-main{flex-wrap:wrap;align-items:flex-start;min-height:48px;text-align:left}
+body.p751 #traits-list .trait-main .tag{display:none}
+body.p751 #traits-list .trait-title{flex:1 1 100%}
+.s751{display:none}
+body.p751 .s751{display:block;flex:1 1 100%;margin-top:3px;font-size:13px;line-height:1.4;color:var(--muted);font-weight:400}
+.g751{display:none}
+body.p751 .g751{display:block;margin:12px 2px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+body.p751 #traits-list > .g751:first-child{margin-top:2px}
+`;
+  const st = document.createElement('style'); st.id = 'pilot751'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
