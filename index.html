@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.48.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.49.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -28024,6 +28024,151 @@ body.p748 #modal [data-act="t6-adv"],body.p748 #modal .dice2 .seg-btn{min-height
 #modal .st748{margin-top:10px}
 `;
   const st = document.createElement('style'); st.id = 'pilot748'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.49: «ЧУЖОЙ ХОД И РЕАКЦИЯ» (путь Б, экран 2, проба за переключателем)
+   Состояния: ux-research/audit-4/ekran-2/plan-chuzhoy.md. Только вид: правила, расход реакции, щит и возврат урона
+   (shieldRefund65), команды мастера прежние. Кнопки реакции на плашке удара нажимают ту же карточку умения.
+   Включается в Настройках «Новый вид чужого хода (проба)» (settings.pilot749, на этом телефоне), по умолчанию выключен.
+   «Бой» в чужой ход: сверху «Ходит X · потом Y, затем ты», жетон реакции словом, полка «Реакция» первой,
+   Действие и Бонус свёрнуты одной строкой (развернуть можно), «Бесплатно» на месте.
+   Удар по тебе (state.lastHit, 60 с, как у щита): плашка «По тебе попали: −N HP», удар против КБ, кнопки реакций,
+   на другой вкладке — тост. Без сознания экран не трогается (там свой блок 6.55).
+   ===================================================================== */
+const P749 = { open: false, hid: 0, seen: 0, hit: 0 };
+const pilot749 = () => !!settings.pilot749 && appRole() === 'player';
+
+/* ---------- Настройки: переключатель ---------- */
+const _openSettings749 = openSettings;
+openSettings = function () {
+  _openSettings749();
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const f = top.renderFn;
+  top.renderFn = () => f().replace('<p class="muted">Настройки хранятся', `<div role="button" tabindex="0" class="option set-row" data-act="set-toggle" data-k="pilot749"><span><b>Новый вид чужого хода (проба)</b><span>Пока ходят другие: кто ходит и когда ты, реакция первой, удар по тебе с кнопкой реакции. Правила прежние. Выключите, чтобы вернуть старый вид.</span></span><i class="switch ${settings.pilot749 ? 'on' : ''}"></i></div>
+    <p class="muted">Настройки хранятся`);
+  refreshModal();
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="set-toggle"][data-k="pilot749"]'); if (el) setTimeout(() => render(), 0); });
+
+/* ---------- кто ходит и когда я ---------- */
+function queue749() {
+  const v = partyView(), vc = v && v.vc, rows = vc && vc.rows; if (!rows || !rows.length) return null;
+  const me = myPid(), i = rows.findIndex(r => r.cur), cur = rows[i]; if (!cur) return null;
+  const nm = r => esc(String(r.name || '').replace(/ \(вы\)$/, ''));
+  const m = rows.findIndex(r => r.pid && r.pid === me);
+  let then = '';
+  if (m >= 0) {
+    const mid = []; for (let j = 1; j < rows.length; j++) { const r = rows[(i + j) % rows.length]; if (r === rows[m]) break; if (!r.down) mid.push(nm(r)); }
+    then = !mid.length ? 'ты следующий' : mid.length <= 2 ? `потом ${mid.join(', ')}, затем ты` : `до тебя ещё ${mid.length}`;
+  }
+  return { cur: nm(cur), then };
+}
+/* реакции героя: [id, title, cost, карточка-кнопка] */
+function reacts749() {
+  const acts = visibleActions(derive()).filter(a => a.kind === 'reaction');
+  return acts.map(a => [a.id, a.title, a.cost || 0, document.querySelector(`#abilities [data-act=ability][data-id="${a.id}"]`)]).filter(r => r[3]);
+}
+
+/* ---------- плашка удара ---------- */
+function hit749Html() {
+  const h = recentHit65(); if (!h || h.t === P749.hid) return '';
+  const ac = derive().ac;
+  const sub = !h.at ? 'Урон записал мастер.' : h.at < ac ? `Удар ${h.at} против твоего КБ ${ac}: по числам это промах — уточни у мастера.` : `Удар ${h.at} против твоего КБ ${ac}.`;
+  const rs = reacts749(), live = rs.filter(r => !r[3].disabled);
+  const tail = !rs.length ? '' : spent67('react') ? '<p class="h749-n">Реакция уже потрачена — вернётся в твой ход.</p>'
+    : live.length ? `<p class="h749-n">Можно ответить реакцией:</p><div class="h749-b">${live.map(r => `<button type="button" class="btn h749-r" data-act="w749-r" data-id="${r[0]}">✦ ${esc(r[1])}${r[2] ? ` · ${r[2]} MP` : ''}</button>`).join('')}</div>`
+    : '<p class="h749-n">Реакции сейчас недоступны (причина — на карточке ниже).</p>';
+  return `<div class="h749-t"><b>По тебе попали: <span class="h749-a">−${h.amt} HP</span></b><button type="button" class="h749-x" data-act="w749-hide" aria-label="Скрыть">✕</button></div><p class="h749-s">${sub}</p>${tail}`;
+}
+
+/* ---------- «Бой» в чужой ход ---------- */
+function paint749() {
+  const on = pilot749(), t = state.turn, down = typeof downLock70 === 'function' && downLock70();
+  const wait = on && !!t && !t.mine && !down;
+  document.body.classList.toggle('p749', on);
+  document.body.classList.toggle('p749w', wait);
+  document.body.classList.toggle('p749x', wait && P749.open);
+  const fr = $('acts67-frame'), box = $('acts67');
+  let w = $('wait749'), hb = $('hit749'), fo = $('fold749');
+  /* тост об ударе: один раз на удар, если не на «Бое» */
+  const h = on && !down ? recentHit65() : null;
+  if (h && h.t !== P749.seen) { P749.seen = h.t; if (state.activeTab !== 'combat') toast(`По тебе попали: −${h.amt} HP. Ответить реакцией — на вкладке «Бой».`, 'error'); }
+  P749.hit = h ? h.t : 0;
+  const head = fr && fr.querySelector(':scope > .sec-head');
+  /* плашка удара — в любой ход */
+  const hh = h && head ? hit749Html() : '';
+  if (!hh) { if (hb) hb.remove(); }
+  else {
+    if (!hb) { hb = document.createElement('div'); hb.id = 'hit749'; hb.className = 'hit749'; hb.setAttribute('role', 'alert'); }
+    if (hb.previousElementSibling !== head) head.after(hb);
+    if (hb.innerHTML !== hh) hb.innerHTML = hh;
+  }
+  if (!wait || !fr || !box || !head) { if (w) w.remove(); if (fo) fo.remove(); return; }
+  /* полки: метим карточки по порядку, который поставил paintActs67 */
+  const K = { 1: 'act', 11: 'bonus', 21: 'react', 31: 'free' };
+  [...$('attacks').children, ...$('abilities').children].forEach(c => {
+    const k = K[c.style.order] || '';
+    ['act', 'bonus', 'react', 'free'].forEach(x => c.classList.toggle('k749-' + x, k === x));
+  });
+  const q = queue749(), rs = reacts749(), rOff = spent67('react');
+  const hw = `${q ? `<div class="w749-now" role="status"><b>Ходит ${q.cur}</b>${q.then ? `<span>${q.then}</span>` : ''}</div>` : ''}
+    <div class="econ747"><span class="e747${rOff ? ' off' : ''}"><i></i>Реакция · ${rOff ? 'потрачена до твоего хода' : 'есть'}</span></div>
+    <p class="w749-tip">${!rs.length ? 'Реакций у героя нет. Действие и бонус — в свой ход.' : rOff ? 'Действие, бонус и реакция вернутся в твой ход.' : 'Реакцию тратят в чужой ход: когда по тебе попадают или как написано на карточке. Действие и бонус — в свой ход.'}</p>`;
+  if (!w) { w = document.createElement('div'); w.id = 'wait749'; w.className = 'wait749'; }
+  const after = hb && hb.parentNode ? hb : head;
+  if (w.previousElementSibling !== after) after.after(w);
+  if (w.innerHTML !== hw) w.innerHTML = hw;
+  if (!fo) { fo = document.createElement('button'); fo.type = 'button'; fo.id = 'fold749'; fo.className = 'fold749'; fo.dataset.act = 'w749-fold'; box.appendChild(fo); }
+  else if (fo.parentNode !== box) box.appendChild(fo);
+  const n = box.querySelectorAll('.k749-act,.k749-bonus').length;
+  fo.classList.toggle('hidden', !n);
+  const ft = P749.open ? '▴ Свернуть действие и бонус' : `▸ Действие и бонус — в свой ход · ${n}`;
+  if (fo.textContent !== ft) fo.textContent = ft;
+  fo.setAttribute('aria-expanded', P749.open ? 'true' : 'false');
+}
+const _render749 = render;
+render = function () { _render749(); try { paint749(); } catch (e) { console.error(e); } };
+const _goTab749 = goTab;
+goTab = function (t) { _goTab749(t); try { paint749(); } catch (e) { console.error(e); } };
+setInterval(() => { if (P749.hit && !recentHit65()) try { paint749(); } catch (e) { console.error(e); } }, 5000);
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el || !pilot749()) return;
+  switch (el.dataset.act) {
+    case 'w749-fold': P749.open = !P749.open; paint749(); break;
+    case 'w749-hide': { const h = recentHit65(); P749.hid = h ? h.t : 0; paint749(); break; }
+    case 'w749-r': { const b = document.querySelector(`#abilities [data-act=ability][data-id="${el.dataset.id}"]`); if (b && !b.disabled) b.click(); break; }
+  }
+});
+
+(() => {
+  const css = `
+body.p749w #econ747{display:none}
+body.p749w #acts67 > .shelf67[data-k="react"]{order:-10 !important}
+body.p749w .k749-react{order:-9 !important}
+body.p749w .fold749{order:-1}
+body.p749w:not(.p749x) #acts67 > .shelf67[data-k="act"],body.p749w:not(.p749x) #acts67 > .shelf67[data-k="bonus"],
+body.p749w:not(.p749x) .k749-act,body.p749w:not(.p749x) .k749-bonus{display:none !important}
+.fold749{display:none}
+body.p749w .fold749{display:block;width:100%;min-height:48px;margin:6px 0 10px;padding:8px 12px;border-radius:10px;border:1px dashed #3a4a63;background:rgba(18,28,44,.55);color:var(--text);font-size:15px;text-align:left}
+body.p749w .fold749.hidden{display:none}
+.wait749{margin:2px 0 10px}
+.w749-now{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(224,189,110,.45);background:rgba(18,28,44,.6);margin-bottom:8px}
+.w749-now b{font-size:17px;color:var(--text)}
+.w749-now span{font-size:14px;color:var(--muted)}
+.wait749 .econ747{margin:0 0 6px}
+.w749-tip{margin:0;font-size:13px;line-height:1.4;color:var(--muted)}
+.hit749{margin:2px 0 10px;padding:10px 12px;border-radius:10px;border:1px solid #c0503f;background:rgba(80,20,18,.55)}
+.h749-t{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.h749-t b{font-size:17px;color:#ffb4a6}
+.h749-a{white-space:nowrap}
+.h749-x{min-width:44px;min-height:44px;margin:-8px -8px -8px 0;border:0;background:none;color:var(--muted);font-size:18px}
+.h749-s,.h749-n{margin:4px 0 0;font-size:14px;color:var(--text)}
+.h749-n{color:var(--muted)}
+.h749-b{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.h749-r{width:100%;min-height:48px;font-size:16px;background:#1f3b39;border:1px solid #4fc3b4;color:#dff7f3}
+`;
+  const st = document.createElement('style'); st.id = 'pilot749'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
