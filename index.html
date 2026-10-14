@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.51.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.52.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -28307,6 +28307,141 @@ body.p751 .g751{display:block;margin:12px 2px 4px;font-size:12px;letter-spacing:
 body.p751 #traits-list > .g751:first-child{margin-top:2px}
 `;
   const st = document.createElement('style'); st.id = 'pilot751'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.52: «МАСТЕР: ПАНЕЛЬ ХОДА И КАРТОЧКА ИГРОКА» (путь Б, экран 4, проба за переключателем)
+   Состояния и решения: ux-research/audit-4/ekran-4/plan.md. Только вид: кнопки, data-act и команды прежние
+   (atk-do, act-apply, act-roll, give-turn, gm-turn, atk-later), правила и расчёты не трогаются.
+   Включается в Настройках «Новый вид пульта мастера (проба)» (settings.pilot752, на этом телефоне), по умолчанию выключен.
+   Панель «Ждёт решения»: у каждой цели крупно итог словом (Попал / Промах / Спасбросок…), кнопки во всю ширину 48 px,
+     «✕» подписан словами («Не наносить», «Не лечить»), «Урон 8» → «Нанести 8 урона» (как у хода противника).
+   Ход противника в панели: имя и ярлык не повторяют шапку, выбор атаки и цели — кнопки 44 px, «Бросить» 48 px.
+   Ход игрока: что у него осталось (Действие / Бонус / Реакция — из его листа), «Дать ещё» кнопками 44 px.
+   Карточка игрока: КБ и состояния рядом с HP, в его ход «Дать ещё» там же; кнопки 44 px.
+   ===================================================================== */
+const pilot752 = () => !!settings.pilot752 && appRole() === 'gm';
+
+/* ---------- Настройки: переключатель ---------- */
+const _openSettings752 = openSettings;
+openSettings = function () {
+  _openSettings752();
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const f = top.renderFn;
+  top.renderFn = () => f().replace('<p class="muted">Настройки хранятся', `<div role="button" tabindex="0" class="option set-row" data-act="set-toggle" data-k="pilot752"><span><b>Новый вид пульта мастера (проба)</b><span>Для мастера: в панели хода итог атаки словом и большие кнопки «Нанести / Не наносить», у игрока видно, что осталось из действий. Команды прежние. Выключите, чтобы вернуть старый вид.</span></span><i class="switch ${settings.pilot752 ? 'on' : ''}"></i></div>
+    <p class="muted">Настройки хранятся`);
+  refreshModal();
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="set-toggle"][data-k="pilot752"]'); if (el) setTimeout(() => { paint752(); if (appRole() === 'gm') { renderGm(); dockSoon65(); } }, 0); });
+
+function paint752() { document.body.classList.toggle('p752', pilot752()); }
+
+/* ---------- решения: итог словом, кнопки подписаны ---------- */
+const V752 = { hit: ['Попал', 'hit'], miss: ['Промах', 'miss'], ask: ['КБ неизвестен — решите', 'ask'], save: ['Спасбросок', 'save'], heal: ['Лечение', 'heal'],
+  done: ['Применено', 'done'], skip: ['Пропущено', 'skip'], info: ['Без урона', 'skip'], mirror: ['Отражение', 'skip'] };
+const _atkRowHtml752 = atkRowHtml;
+atkRowHtml = function (c, row, i) {
+  let h = _atkRowHtml752(c, row, i);
+  if (!pilot752()) return h;
+  const v = V752[row.st];
+  const no = row.st === 'heal' ? 'Не лечить' : 'Не наносить';
+  h = h.replace('<div class="atk-row">', `<div class="atk-row r752 st752-${v ? v[1] : 'x'}">`)
+    .replace(/(data-v="skip">)✕(<\/button>)/g, `$1${no}$2`)
+    .replace(/(data-v="dmg">)Урон (\d+)(<\/button>)/, '$1Нанести $2 урона$3');
+  if (v) h = h.replace(/<br><small>(попал: )?/, `<br><em class="v752">${v[0]}${row.st === 'hit' && c.crit ? ' · крит' : ''}</em><small>`);
+  return h;
+};
+
+/* ---------- ход игрока: что осталось + «Дать ещё» ---------- */
+function turn752(p) { const t = p && p.sheet && p.sheet.turn; return t && t.mine && t.key === turnTag65() ? t : null; }
+function econ752(p) {
+  const t = turn752(p); if (!t) return '';
+  const tok = (n, off) => `<span class="e752${off ? ' off' : ''}">${n}${off ? ' · потрачено' : ''}</span>`;
+  return `<div class="econ752" aria-label="Что осталось у игрока">${tok('Действие', !(t.act > 0 || t.atk > 0))}${tok('Бонус', !(t.bonus > 0))}${tok('Реакция', !(t.react > 0))}</div>`;
+}
+const _gmTurnGiveHtml752 = gmTurnGiveHtml;
+gmTurnGiveHtml = function () {
+  const h = _gmTurnGiveHtml752();
+  if (!h || !pilot752()) return h;
+  const key = gm.combat.order[gm.combat.turn] || '', p = playerById(key.slice(2));
+  return econ752(p) + h.replace('<div class="give-turn">', '<div class="give-turn g752">');
+};
+
+/* в шапке панели: что осталось у игрока, даже когда панель свёрнута */
+const _dockHtml752 = dockHtml65;
+dockHtml65 = function () {
+  const h = _dockHtml752();
+  if (!pilot752()) return h;
+  const key = curKey65(); if (key[0] !== 'p') return h;
+  const t = turn752(playerById(key.slice(2))); if (!t) return h;
+  const left = [t.act > 0 || t.atk > 0 ? 'действие' : '', t.bonus > 0 ? 'бонус' : '', t.react > 0 ? 'реакция' : ''].filter(Boolean);
+  return h.replace(/(<div class="dock-head"[^>]*><span>[\s\S]*?<\/b>)/, `$1<small class="h752">${left.length ? 'осталось: ' + left.join(', ') : 'всё потрачено'}</small>`);
+};
+
+/* ---------- карточка игрока: КБ и состояния рядом с HP, «Дать ещё» в его ход ---------- */
+const _gmPlayerHtml752 = gmPlayerHtml;
+gmPlayerHtml = function () {
+  let h = _gmPlayerHtml752();
+  if (!pilot752() || !gmView || gmView.give) return h;
+  const p = playerById(gmView.id); if (!p || h.indexOf('<div class="q740">') < 0) return h;
+  const s = summaryOf(p.sheet);
+  let conds = '';
+  try { conds = (targetConds66('p:' + p.id) || []).map(x => condName66(x.id || x)).filter(Boolean).join(', '); } catch (e) { conds = ''; }
+  const line = `<p class="q752">КБ <b>${s.ac}</b>${conds ? ` · <span>${esc(conds)}</span>` : ''}</p>`;
+  const cur = gm.combat && gm.combat.active && (gm.combat.order[gm.combat.turn] || '') === 'p:' + p.id;
+  const give = cur ? gmTurnGiveHtml() : '';
+  h = h.replace(/(<div class="q740"><div class="q740-hp">[\s\S]*?<\/div>)/, `$1${line}`);
+  if (give) h = h.replace(/(<div class="q740">[\s\S]*?data-act="gm-give">Выдать предмет<\/button><\/div>)/, `$1${give}`);
+  return h;
+};
+
+const _render752 = render;
+render = function () { _render752(); try { paint752(); } catch (e) { console.error(e); } };
+const _renderGm752 = renderGm;
+renderGm = function () { try { paint752(); } catch (e) { console.error(e); } return _renderGm752.apply(this, arguments); };
+
+(() => {
+  const css = `
+body.p752 #gm-dock{font-size:15px}
+body.p752 #gm-dock .dock-head{min-height:44px;font-size:15px}
+body.p752 #gm-dock .dock-tog{font-size:13px}
+body.p752 #gm-dock .dock-cap{font-size:14px}
+body.p752 #gm-dock .atk-head{font-size:15px}
+body.p752 #gm-dock .atk-calc{font-size:13px}
+body.p752 .atk-row.r752{flex-direction:column;align-items:stretch;gap:8px;padding:10px 0}
+body.p752 .r752 > span:first-child{font-size:15px;line-height:1.35}
+body.p752 .r752 small{font-size:13px}
+body.p752 .v752{display:inline-block;font-style:normal;font-weight:800;font-size:17px;margin:2px 8px 0 0}
+body.p752 .st752-hit .v752{color:#8f1d10}
+body.p752 .st752-miss .v752,body.p752 .st752-skip .v752{color:#6b6150}
+body.p752 .st752-save .v752,body.p752 .st752-ask .v752{color:#7a4a08}
+body.p752 .st752-heal .v752,body.p752 .st752-done .v752{color:#1d6b4a}
+body.p752 .r752 .atk-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:stretch}
+body.p752 .r752 .atk-btns .btn{flex:1 1 30%;min-height:48px;font-size:15px;padding:0 10px}
+body.p752 .r752 .atk-btns .btn.danger{flex:2 1 55%}
+body.p752 #gm-dock .h752{display:block;font-size:13px;color:var(--ink-soft,#4a3b28);font-weight:400}
+body.p752 #gm-dock .dock-later .link-btn{display:inline-flex;align-items:center;min-height:44px;font-size:14px}
+body.p752 #gm-dock .dock-foot .btn{min-height:48px;font-size:15px}
+body.p752 #gm-dock .dock-foot .btn[data-v="-1"]{min-width:48px}
+body.p752 #gm-dock .dock-body > .scroll-tag,body.p752 #gm-dock .dock-body > .scroll-title{display:none}
+body.p752 #gm-dock .seg-btn{min-height:44px;font-size:14px}
+body.p752 #gm-dock .act-roll{min-height:48px;width:100%;font-size:16px}
+body.p752 #gm-dock .act-res .btn{min-height:48px;width:100%;margin-top:6px;font-size:15px}
+body.p752 #gm-dock .act-res p{font-size:15px}
+body.p752 #gm-dock .dock-act{font-size:15px}
+body.p752 #gm-dock .dock-body .btn-row .btn,body.p752 #gm-dock .dock-auto{min-height:44px}
+body.p752 #gm-dock .dock-body .muted,body.p752 #gm-dock .dock-line,body.p752 #gm-dock .dock-done{font-size:14px}
+.econ752{display:flex;gap:6px;margin:6px 0 4px}
+.e752{flex:1;display:flex;align-items:center;justify-content:center;min-height:36px;padding:2px 4px;border-radius:10px;border:1px solid rgba(120,80,30,.45);background:rgba(255,255,255,.35);color:var(--ink,#2a1d10);font-size:13px;font-weight:700;text-align:center;line-height:1.15}
+.e752.off{opacity:.55;text-decoration:line-through;font-weight:500}
+body.p752 .give-turn.g752{font-size:14px;color:var(--ink-soft,#4a3b28)}
+body.p752 .give-turn.g752 > span{flex:1 0 100%}
+body.p752 .give-turn.g752 .btn{flex:1;min-height:44px;font-size:14px}
+body.p752 .q752{margin:-2px 0 8px;font-size:15px}
+body.p752 .q752 span{color:#8f1d10}
+body.p752 .q740 .ux738-hp .btn,body.p752 .q740 .ux738-hp input{min-height:44px;font-size:15px}
+body.p752 .q740 .give-turn{margin:8px 0 0}
+`;
+  const st = document.createElement('style'); st.id = 'pilot752'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
