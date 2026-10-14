@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.49.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.50.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -28169,6 +28169,94 @@ body.p749w .fold749.hidden{display:none}
 .h749-r{width:100%;min-height:48px;font-size:16px;background:#1f3b39;border:1px solid #4fc3b4;color:#dff7f3}
 `;
   const st = document.createElement('style'); st.id = 'pilot749'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.50: «ПЕРСОНАЖ: СВОДКА И ХАРАКТЕРИСТИКИ» (путь Б, экран 3, выпуск 1, проба за переключателем)
+   Состояния: ux-research/audit-4/ekran-3/plan.md. Только вид: значения из derive() и saveCalc68 (те же, что в
+   окне спасброска), окна «Подробнее», КБ, Скорость, Инициатива, БМ — прежние data-act.
+   Включается в Настройках «Новый вид листа (проба)» (settings.pilot750, на этом телефоне), по умолчанию выключен.
+   Сводка под «кто я»: КБ · Скорость · Инициатива · БМ (сейчас они только на «Бое»). Характеристики строками:
+   крупно модификатор проверки, рядом спасбросок (★ — мастерство класса, помеха и автопровал словами),
+   значение мелко. Нераспределённые характеристики — старый вид с кнопкой «Распределить».
+   ===================================================================== */
+const pilot750 = () => !!settings.pilot750 && appRole() === 'player';
+
+/* ---------- Настройки: переключатель ---------- */
+const _openSettings750 = openSettings;
+openSettings = function () {
+  _openSettings750();
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const f = top.renderFn;
+  top.renderFn = () => f().replace('<p class="muted">Настройки хранятся', `<div role="button" tabindex="0" class="option set-row" data-act="set-toggle" data-k="pilot750"><span><b>Новый вид листа (проба)</b><span>«Персонаж»: КБ и скорость сверху, у характеристик крупно бонус к проверке и спасбросок. Значения прежние. Выключите, чтобы вернуть старый вид.</span></span><i class="switch ${settings.pilot750 ? 'on' : ''}"></i></div>
+    <p class="muted">Настройки хранятся`);
+  refreshModal();
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="set-toggle"][data-k="pilot750"]'); if (el) setTimeout(() => render(), 0); });
+
+function sum750Html(d) {
+  const c = (act, n, v, extra = '') => `<button type="button" class="s750" data-act="${act}"${extra}><span>${n}</span><b>${v}</b></button>`;
+  return c('ac-info', 'КБ', d.ac) + c('speed-info', 'Скорость', meters(d.speed)) + c('term', 'Инициатива', signed(d.init), ' data-term="Инициатива"') + c('term', 'БМ', signed(d.prof), ' data-term="БМ"');
+}
+function stats750Html(d) {
+  const pro = SAVES68[state.classRole] || [];
+  const rows = STATS.map(st => {
+    const s = saveCalc68(st.short), star = pro.includes(st.short);
+    const note = s.auto.length ? `спасбросок: автопровал (${s.auto.join(', ')})` : s.dis.length ? `спасбросок с помехой (${s.dis.join(', ')})` : '';
+    return `<div class="r750" role="button" tabindex="0" data-act="stat-info" data-key="${st.key}" aria-label="${st.name}: проверка ${signed(d.mods[st.key])}, спасбросок ${signed(s.b)}">
+      <span class="r750-n"><b>${st.name.replace('Телосложение', 'Телосло&shy;жение')}</b><small>значение ${d.scores[st.key]}</small></span>
+      <span class="r750-c"><b>${signed(d.mods[st.key])}</b></span>
+      <span class="r750-s${star ? ' pro' : ''}"><b>${signed(s.b)}${star ? '<i>★</i>' : ''}</b></span>
+      ${note ? `<span class="r750-w">${esc(note)}</span>` : ''}
+    </div>`;
+  }).join('');
+  const any = STATS.some(st => pro.includes(st.short));
+  return '<div class="r750-hd" aria-hidden="true"><span></span><span>проверка</span><span>спас&shy;бросок</span></div>' + rows + `<p class="r750-h">Мастер говорит «проверка Силы» — бросай d20 и прибавь число из «проверки». «Спасбросок» — так же, из своего столбца.${any ? ' ★ — у класса мастерство в этом спасброске.' : ''} Нажмите строку — откуда значение.</p>`;
+}
+function paint750() {
+  const on = pilot750();
+  document.body.classList.toggle('p750', on);
+  let sm = $('sum750'), sg = $('stats750');
+  const fr = $('who-frame'), grid = $('stats-grid');
+  const ok = on && fr && grid && state.statsDone;
+  document.body.classList.toggle('p750s', !!ok);
+  if (!ok) { if (sm) sm.remove(); if (sg) sg.remove(); return; }
+  const d = derive();
+  const hs = sum750Html(d);
+  if (!sm) { sm = document.createElement('div'); sm.id = 'sum750'; sm.className = 'sum750'; }
+  if (sm.parentNode !== fr) fr.appendChild(sm);
+  if (sm.innerHTML !== hs) sm.innerHTML = hs;
+  const hg = stats750Html(d);
+  if (!sg) { sg = document.createElement('div'); sg.id = 'stats750'; sg.className = 'stats750'; }
+  if (sg.previousElementSibling !== grid) grid.after(sg);
+  if (sg.innerHTML !== hg) sg.innerHTML = hg;
+}
+const _render750 = render;
+render = function () { _render750(); try { paint750(); } catch (e) { console.error(e); } };
+const _goTab750 = goTab;
+goTab = function (t) { _goTab750(t); try { paint750(); } catch (e) { console.error(e); } };
+
+(() => {
+  const css = `
+body.p750s #stats-grid{display:none}
+.sum750{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+.s750{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:56px;padding:4px 2px;border-radius:10px;border:1px solid rgba(224,189,110,.35);background:rgba(18,28,44,.55);color:var(--text)}
+.s750 span{font-size:12px;color:var(--muted);line-height:1.2}
+.s750 b{font-size:18px;color:#f3e2b3;line-height:1.2}
+.stats750{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.r750,.r750-hd{display:grid;grid-template-columns:minmax(0,1fr) 52px 60px;align-items:center;gap:4px 8px;min-height:56px;padding:6px 10px;border-radius:10px;border:1px solid rgba(224,189,110,.25);background:rgba(18,28,44,.45);cursor:pointer}
+.r750 > span{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.r750-hd{min-height:0;padding:0 10px;border:0;background:none;cursor:default;font-size:12px;color:var(--muted);text-align:center;line-height:1.2}
+.r750-s i{font-style:normal;font-size:12px;margin-left:2px;vertical-align:top}
+.r750 small{font-size:12px;color:var(--muted)}
+.r750-n b{font-size:15px;color:var(--text);font-weight:600;overflow-wrap:anywhere}
+.r750-c,.r750-s{align-items:center;text-align:center}
+.r750-c b{font-size:24px;color:#f3e2b3;font-weight:800}
+.r750-s b{font-size:18px;color:var(--text);font-weight:700}
+.r750-s.pro b{color:#4fc3b4}
+.r750-w{grid-column:1/-1;font-size:13px;color:#ffb4a6}
+.r750-h{margin:6px 2px 0;font-size:13px;line-height:1.4;color:var(--muted)}
+`;
+  const st = document.createElement('style'); st.id = 'pilot750'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
