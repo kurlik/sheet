@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.52.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.53.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -28442,6 +28442,71 @@ body.p752 .q740 .ux738-hp .btn,body.p752 .q740 .ux738-hp input{min-height:44px;f
 body.p752 .q740 .give-turn{margin:8px 0 0}
 `;
   const st = document.createElement('style'); st.id = 'pilot752'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.53: «ИНВЕНТАРЬ» (путь Б, экран 5, проба за переключателем)
+   Состояния и решения: ux-research/audit-4/ekran-5/plan.md. Только вид: строки предметов, кнопки и data-act прежние (6.7 inv7).
+   Включается в Настройках «Новый вид инвентаря (проба)» (settings.pilot753, на этом телефоне), по умолчанию выключен.
+   Порядок: нагрузка и монеты → «Сумка · N» (фильтры и предметы) → «Снаряжение» → «Добавить предмет» (если есть).
+   Надписи не мельче 13 px, цели касания 44 px (фильтры, монеты, кнопки строки), «надето» плашкой,
+   «Выбросить» не во всю ширину и последней — чтобы не попасть пальцем случайно.
+   ===================================================================== */
+const pilot753 = () => !!settings.pilot753 && appRole() === 'player';
+
+const _openSettings753 = openSettings;
+openSettings = function () {
+  _openSettings753();
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const f = top.renderFn;
+  top.renderFn = () => f().replace('<p class="muted">Настройки хранятся', `<div role="button" tabindex="0" class="option set-row" data-act="set-toggle" data-k="pilot753"><span><b>Новый вид инвентаря (проба)</b><span>«Инвентарь»: сумка сразу сверху, крупнее текст и кнопки. Предметы и действия прежние. Выключите, чтобы вернуть старый вид.</span></span><i class="switch ${settings.pilot753 ? 'on' : ''}"></i></div>
+    <p class="muted">Настройки хранятся`);
+  refreshModal();
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="set-toggle"][data-k="pilot753"]'); if (el) setTimeout(() => render(), 0); });
+
+function paint753() {
+  const on = pilot753();
+  document.body.classList.toggle('p753', on);
+  const list = $('inv-list'), fr = list && list.closest('section.frame');
+  const lf = $('load') && $('load').closest('section.frame');
+  let hd = $('bag753');
+  if (!on || !fr) { if (hd) hd.remove(); if (fr) fr.classList.remove('bag753'); if (lf) lf.classList.remove('load753'); return; }
+  fr.classList.add('bag753'); if (lf) lf.classList.add('load753');
+  if (!hd) { hd = document.createElement('h2'); hd.id = 'bag753'; fr.insertBefore(hd, fr.firstChild); }
+  const n = (state.inventory || []).length;
+  const t = `Сумка · ${n}`;
+  if (hd.textContent !== t) hd.textContent = t;
+}
+const _render753 = render;
+render = function () { _render753(); try { paint753(); } catch (e) { console.error(e); } };
+const _goTab753 = goTab;
+goTab = function (t) { _goTab753(t); try { paint753(); } catch (e) { console.error(e); } };
+
+(() => {
+  const css = `
+body.p753 #tab-inventory .page-in{display:flex;flex-direction:column}
+body.p753 #tab-inventory .page-in > .frame{order:3}
+body.p753 #tab-inventory .page-in > .frame.load753{order:1}
+body.p753 #tab-inventory .page-in > .frame.bag753{order:2}
+body.p753 #tab-inventory .page-in > .frame.solo-only{order:4}
+body.p753 .filter{height:44px;font-size:14px}
+body.p753 .coin{min-height:44px}
+body.p753 .coin input{font-size:16px}
+body.p753 .item-name{font-size:16px}
+body.p753 .item-name em{display:inline-block;font-size:13px;padding:1px 6px;border-radius:8px;border:1px solid rgba(159,208,138,.55);vertical-align:1px}
+body.p753 .item-sub{font-size:13px}
+body.p753 .item-main{min-height:44px;justify-content:center}
+body.p753 .inv7-mainbtn{min-height:44px;font-size:14px}
+body.p753 .inv7-chev{font-size:16px;padding:0 6px}
+body.p753 .inv7-more .btn{min-height:44px;font-size:14px}
+body.p753 .inv7-more .btn.danger[data-act=item-del]{order:9;flex:0 0 auto;margin-left:auto;padding:0 14px}
+body.p753 .charges span,body.p753 .card-note{font-size:13px}
+body.p753 .slot-name{font-size:13px}
+body.p753 .slot{min-height:60px}
+body.p753 .inv7-slots{min-height:44px;font-size:14px}
+body.p753 .meter-name,body.p753 .meter-val{font-size:15px}
+`;
+  const st = document.createElement('style'); st.id = 'pilot753'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
