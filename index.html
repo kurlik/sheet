@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.47.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.48.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -27756,6 +27756,274 @@ body.p747 #modal [data-act="t6-adv"],body.p747 #modal .dice2 .seg-btn{min-height
 #modal .u747{font-size:13px}
 `;
   const st = document.createElement('style'); st.id = 'pilot747'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.48: «УМЕНИЯ И ЗАКЛИНАНИЯ В СВОЙ ХОД» (путь Б, экран 1, проба за переключателем)
+   Состояния и макеты: ux-research/audit-4/ekran-2/plan.md. Только вид поверх act6Html и render: правила, броски,
+   цена MP, «раз за отдых», расход действия, запись мастеру (act6Go, useAbility, econSpend, state.atkq) прежние.
+   Включается в Настройках «Новый вид умений (проба)» (settings.pilot748, на этом телефоне), по умолчанию выключен.
+   «Бой»: «✦ Применить» 48 px, тип строкой (область, спасбросок, лечение), недоступное — «Недоступно» и причина
+   на карточке (не хватает MP, уже использовано, бонус потрачен, не твой ход). Жетоны хода — как у пилота 7.47.
+   Окно: цели по группам, «Цели · до N · выбрано K» (лишнюю выбрать нельзя), строка спасброска, кубики строкой,
+   «Бросить» неактивна с причиной, под кнопкой — что и когда тратится. Атака заклинанием — вид пилота 7.47.
+   Итог: спасбросок и лечение ответа не ждут — «Ушло мастеру…», нет связи — та же плашка. Стихия не выбирается
+   (вшита в заклинание), кроме «Стрелы стихии» — у неё полоса стихий прежняя (m17).
+   ===================================================================== */
+const P748 = { go: 0, sig: '' };
+const pilot748 = () => !!settings.pilot748 && appRole() === 'player';
+const SAVE748 = { 'Сил': 'Силы', 'Лов': 'Ловкости', 'Тел': 'Телосложения', 'Инт': 'Интеллекта', 'Мдр': 'Мудрости', 'Хар': 'Харизмы' };
+const KIND748 = { action: 'действие', bonus: 'бонус', reaction: 'реакция', free: '' };
+
+/* ---------- Настройки: переключатель ---------- */
+const _openSettings748 = openSettings;
+openSettings = function () {
+  _openSettings748();
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const f = top.renderFn;
+  top.renderFn = () => f().replace('<p class="muted">Настройки хранятся', `<div role="button" tabindex="0" class="option set-row" data-act="set-toggle" data-k="pilot748"><span><b>Новый вид умений (проба)</b><span>Умения и заклинания в свой ход по-новому: причина недоступности на карточке, цели по группам. Правила и броски прежние. Выключите, чтобы вернуть старый вид.</span></span><i class="switch ${settings.pilot748 ? 'on' : ''}"></i></div>
+    <p class="muted">Настройки хранятся`);
+  refreshModal();
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="set-toggle"][data-k="pilot748"]'); if (el) setTimeout(() => render(), 0); });
+
+/* ---------- общее ---------- */
+function def748(id) { return visibleActions(derive()).find(x => x.id === id); }
+function kind748(a) { return KIND748[a && a.kind] != null ? KIND748[a.kind] : 'действие'; }
+function type748(s) {
+  if (!s) return '';
+  if (s.rider) return 'к следующему удару';
+  if (s.roll === 'atk') return 'бросок атаки';
+  if (s.roll === 'save') return (s.tgt === 'area' ? 'область, ' : '') + 'спасбросок ' + s.save;
+  if (s.roll === 'heal') return s.tgt === 'self' ? 'лечение себя' : s.tgt === 'allies' ? 'лечение, несколько' : 'лечение';
+  if (s.roll === 'fx') return s.tgt === 'allies' ? 'эффект, несколько' : 'эффект';
+  return '';
+}
+/* «2 MP и действие» / «действие» / «2 MP» / '' */
+function cost748(a) { const k = kind748(a), c = a && a.cost ? `${a.cost} MP` : ''; return [c, k].filter(Boolean).join(' и '); }
+function why748(a, d) {
+  const L = lim68Of(a);
+  if (L && lim68Left(a) === 0) return `Уже использовано${L.n > 1 ? ` ${L.n} раза` : ''} за ${LIM_PER68[L.per]}.`;
+  if (a.cost > 0 && state.mp.current < a.cost) return `Не хватает MP: нужно ${a.cost}, осталось ${state.mp.current}.`;
+  const t = state.turn, ec = econCheck(a.kind);
+  if (!ec.ok) {
+    if (t && !t.mine && a.kind !== 'reaction') return 'Сейчас не твой ход.';
+    if (a.kind === 'bonus') return 'Бонус на этот ход уже потрачен. Нужно ещё — попросите мастера.';
+    if (a.kind === 'reaction') return 'Реакция уже потрачена.';
+    return 'Действие на этот ход уже потрачено. Нужно ещё — попросите мастера.';
+  }
+  return '';
+}
+
+/* ---------- «Бой»: карточки умений ---------- */
+function paint748() {
+  const on = pilot748();
+  document.body.classList.toggle('p748', on);
+  document.body.classList.toggle('p748-cb', on && state.activeTab === 'combat');
+  if (!on) return;
+  /* жетоны хода, если пилот атаки выключен (его paint747 их уже убрал) */
+  const fr = $('acts67-frame');
+  if (fr && !pilot747()) {
+    const h = econ747Html(); let ec = $('econ747');
+    if (h) {
+      if (!ec) { ec = document.createElement('div'); ec.id = 'econ747'; ec.className = 'econ747'; ec.setAttribute('role', 'status'); }
+      const head = fr.querySelector(':scope > .sec-head');
+      if (head && ec.previousElementSibling !== head) head.after(ec);
+      if (ec.innerHTML !== h) ec.innerHTML = h;
+    }
+  }
+  const d = derive(), acts = visibleActions(d);
+  document.querySelectorAll('#abilities [data-act=ability]').forEach(b => {
+    const a = acts.find(x => x.id === b.dataset.id), card = b.closest('.card'), main = card && card.querySelector('.card-main'); if (!a || !main) return;
+    const sub = main.querySelector('.card-sub'), tp = type748(abilSpec(a));
+    if (sub && tp && !sub.dataset.t748) { sub.dataset.t748 = 1; sub.innerHTML = sub.innerHTML.replace(/ · (бонусное действие|реакция|без действия|действие)/, ' · ' + esc(tp)); }
+    const why = why748(a, d), txt = b.disabled ? 'Недоступно' : '✦ Применить';
+    if (b.textContent !== txt) b.textContent = txt;
+    b.classList.add('a748');
+    let r = main.querySelector('.r748');
+    if (!why || !b.disabled) { if (r) r.remove(); return; }
+    if (!r) { r = document.createElement('span'); r.className = 'card-note r748'; main.appendChild(r); }
+    if (r.textContent !== why) r.textContent = why;
+  });
+}
+const _render748 = render;
+render = function () { _render748(); try { paint748(); } catch (e) { console.error(e); } };
+const _goTab748 = goTab;
+goTab = function (t) { _goTab748(t); try { paint748(); } catch (e) { console.error(e); } };
+
+/* ---------- окно умения ---------- */
+function multi748(A) { return A.tgt === 'area' || A.tgt === 'allies'; }
+function count748(A) { return A.sel.length + (String(A.other || '').trim() ? 1 : 0); }
+function goWhy748(A) {
+  if (needTgt747(A)) return multi748(A) ? 'Сначала выберите цели' : 'Сначала выберите цель';
+  if ($('t6-sum') && !String(A.sum).trim()) return 'Впишите сумму на кубиках';
+  return '';
+}
+function spend748(A) {
+  const a = def748(A.id); if (A.done) return 'Этот бросок входит в уже потраченное.';
+  const c = cost748(a), dice = !!document.querySelector('#modal [data-act="t6-go"].roll748');
+  if (!c) return 'Ничего не тратит.';
+  if (a && !a.cost) return `MP не тратит, тратит ${kind748(a)}.`;
+  return `${c} тратятся ${dice ? 'в момент броска' : 'при «Применить»'}. До этого «Отмена» ничего не тратит.`;
+}
+function head748(R, A) {
+  const a = def748(A.id), ti = R.querySelector('.scroll-title'); if (!a || !ti || ti.querySelector('.c748')) return;
+  const c = [a.cost ? `${a.cost} MP` : '0 MP', kind748(a)].filter(Boolean).join(' · ');
+  ti.insertAdjacentHTML('beforeend', ` <small class="c748">${esc(c)}</small>`);
+}
+function form748(h, A) {
+  const T = document.createElement('template'); T.innerHTML = h; const R = T.content, s = A.spec || {};
+  head748(R, A);
+  const btns = [...R.querySelectorAll('[data-act="t6-pick"]')];
+  if (btns.length) {
+    const pick = btns[0].closest('.pick'), list = targetList(), kind = id => (list.find(t => t.id === id) || {}).kind || 'enemy';
+    const multi = multi748(A), n = count748(A), full = multi && s.max && n >= s.max;
+    const G = [['Враги', k => k === 'enemy'], ['НПС', k => k === 'npc'], ['Свои', k => k === 'ally' || k === 'self']];
+    const box = document.createElement('div'); box.className = 'tg747';
+    box.innerHTML = `<p class="h747">${multi ? `Цели · ${s.max ? 'до ' + s.max : 'несколько'} · выбрано ${n}` : 'Цель · одна'}</p>`;
+    G.forEach(([nm, f]) => {
+      const bs = btns.filter(b => f(kind(b.dataset.id))); if (!bs.length) return;
+      const p = document.createElement('p'); p.className = 'g747'; p.textContent = nm; box.appendChild(p);
+      const row = document.createElement('div'); row.className = 'pick chips747';
+      bs.forEach(b => { b.classList.add('chip747'); if (full && !b.classList.contains('on')) b.disabled = true; row.appendChild(b); });
+      box.appendChild(row);
+    });
+    const ob = document.createElement('button'); ob.type = 'button'; ob.className = 'seg-btn chip747' + (String(A.other || '').trim() ? ' on' : '');
+    ob.dataset.act = 'p748-other'; ob.innerHTML = 'Другая цель…<small> · не из списка</small>';
+    if (full && !ob.classList.contains('on')) ob.disabled = true;
+    (box.querySelector('.chips747:last-of-type') || box).appendChild(ob);
+    const lab = R.querySelector('#t6-other'), L = lab && lab.closest('label');
+    if (L) { L.classList.toggle('hidden', !(A.p748o || String(A.other || '').trim())); box.appendChild(L); }
+    const sec = pick.previousElementSibling;
+    if (sec && sec.classList.contains('sheet-sec')) sec.remove();
+    R.querySelectorAll('.scroll-text > p.muted').forEach(p => { if (/^Не больше \d+\.$/.test(p.textContent.trim())) p.remove(); });
+    pick.replaceWith(box);
+  }
+  /* спасбросок одной строкой: кто, Сл, что при успехе, кто бросает */
+  if (A.roll === 'save') R.querySelectorAll('.scroll-text > p.muted').forEach(p => {
+    if (!/^Цели делают спасбросок/.test(p.textContent)) return;
+    p.className = 'sv748';
+    p.textContent = `Спасбросок ${SAVE748[s.save] || s.save}, Сл ${derive().dc}: ${s.half ? 'провал — урон целиком, успех — половина' : 'что будет при провале, решает мастер'}. Бросает мастер.`;
+  });
+  /* кубики одной строкой */
+  const rows = [...R.querySelectorAll('.dice2')];
+  if (rows.length && !A.p748d) {
+    const hd = rows[0].previousElementSibling; if (hd && hd.classList.contains('sheet-sec')) hd.remove();
+    const note = R.querySelector('.dice2-note'); if (note) note.remove();
+    const p = document.createElement('p'); p.className = 'd747';
+    p.innerHTML = `Кубики: ${A.mode === 'manual' ? 'бросаю сам' : 'бросает телефон'} · <button type="button" class="link-btn" data-act="p748-dice">изменить</button>`;
+    rows[0].replaceWith(p); rows.slice(1).forEach(r => r.remove());
+  }
+  const sum = R.querySelector('#t6-sum'); if (sum) sum.classList.add('in747');
+  /* «Бросить / Записать / Применить»: неактивна с причиной, под ней — что тратится */
+  const go = R.querySelector('[data-act="t6-go"]');
+  if (go && !go.disabled) {
+    if (sum) go.textContent = 'Записать';
+    else if (/Бросить/.test(go.textContent)) go.textContent = '🎲 Бросить';
+    else go.textContent = '✦ Применить';
+    if (sum || /Бросить/.test(go.textContent)) go.classList.add('roll748');
+    go.classList.add('go747', 'go748');
+    const why = goWhyHtml748(A, R);
+    if (why) go.disabled = true;
+    const row = go.closest('.btn-row'), w = document.createElement('p');
+    w.className = 'w747'; w.id = 'w748'; w.textContent = why || spendHtml748(A, go);
+    if (why) w.classList.add('why');
+    if (row) row.after(w);
+  }
+  return T.innerHTML;
+}
+/* то же, что goWhy748/spend748, но по черновику окна (до вставки в страницу) */
+function goWhyHtml748(A, R) {
+  if (needTgt747(A)) return multi748(A) ? 'Сначала выберите цели' : 'Сначала выберите цель';
+  if (R.querySelector('#t6-sum') && !String(A.sum).trim()) return 'Впишите сумму на кубиках';
+  return '';
+}
+function spendHtml748(A, go) {
+  const a = def748(A.id); if (A.done) return 'Этот бросок входит в уже потраченное.';
+  const c = cost748(a); if (!c) return 'Ничего не тратит.';
+  if (a && !a.cost) return `MP не тратит, тратит ${kind748(a)}.`;
+  return `${c} тратятся ${go.classList.contains('roll748') ? 'в момент броска' : 'при «Применить»'}. До этого «Отмена» ничего не тратит.`;
+}
+function sentTo748(A) { return act6Targets().filter(t => t.kind !== 'self').map(t => t.name).join(', '); }
+function res748(h, A) {
+  const T = document.createElement('template'); T.innerHTML = h; const R = T.content, r = A.res;
+  const txt = R.querySelector('.scroll-text'); if (!txt) return h;
+  const box = document.createElement('div'); box.className = 'box748';
+  [...txt.children].forEach(p => { if (p.tagName === 'P' && /^Ушло мастеру: попадание по КБ/.test(p.textContent)) p.remove(); else box.appendChild(p); });
+  txt.appendChild(box);
+  let plate = '';
+  if (r.sent) {
+    const age = P72.since ? Date.now() - P72.since : 0, who = sentTo748(A);
+    plate = age > 8000 ? '⚠ Нет связи. Запись сохранена и уйдёт, когда связь вернётся. Повторно применять не нужно.'
+      : P72.since ? '⏳ Отправляется…'
+      : A.roll === 'save' ? `📨 Ушло мастеру: ${who}. Спасброски бросает мастер, ответа в приложении не будет.`
+      : A.roll === 'heal' ? `✚ Ушло мастеру: ${who}. Лечение применит мастер.`
+      : `📨 Ушло мастеру: ${who}. Мастер увидит запись.`;
+  }
+  if (plate) txt.insertAdjacentHTML('beforeend', `<p class="wait747 st748" role="status">${esc(plate)}</p>`);
+  const c = cost748(def748(A.id));
+  if (c) txt.insertAdjacentHTML('beforeend', `<p class="muted u747">Потрачено: ${esc(c)}. Отменить в приложении нельзя: если ошиблись, скажите мастеру.</p>`);
+  return T.innerHTML;
+}
+const _act6Html748 = act6Html;
+act6Html = function () {
+  const h = _act6Html748(), A = act6;
+  if (!pilot748() || !A || A.type !== 'abil') return h;
+  try {
+    if (A.roll === 'atk') { const T = document.createElement('template'); T.innerHTML = A.res ? res747(h, A) : form747(h, A); if (!A.res) head748(T.content, A); return T.innerHTML; }
+    return A.res ? res748(h, A) : form748(h, A);
+  } catch (e) { console.error(e); return h; }
+};
+/* живое: поля «Сумма», d20 и «Другая цель» включают кнопку без перерисовки (фокус не теряется) */
+document.addEventListener('input', e => {
+  const A = act6; if (!pilot748() || !A || A.type !== 'abil' || A.res) return;
+  const id = e.target.id;
+  if (id === 't6-sum') A.sum = e.target.value; else if (id === 't6-other') A.other = e.target.value; else if (id === 't6-d20') A.d20 = e.target.value; else return;
+  const go = document.querySelector('#modal [data-act="t6-go"]'); if (!go) return;
+  if (go.classList.contains('go748')) {
+    const why = goWhy748(A), w = $('w748'); go.disabled = !!why;
+    if (w) { w.textContent = why || spend748(A); w.classList.toggle('why', !!why); }
+  } else if (go.classList.contains('go747')) {
+    const why = goWhy747(A), w = $('w747'); go.disabled = !!why;
+    if (w) { w.textContent = why || (A.done ? 'Эта атака входит в уже потраченное действие.' : 'Действие тратится в момент броска. До броска «Отмена» ничего не тратит.'); w.classList.toggle('why', !!why); }
+  }
+});
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el || !pilot748() || !act6 || act6.type !== 'abil') return;
+  const a = el.dataset.act;
+  /* защита 0,7 с: второе касание «Бросить» не закрывает итог и не начинает следующий бросок */
+  if ((a === 't6-next' || a === 'modal-close') && act6.res && Date.now() - P748.go < 700 && el.closest('#modal')) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if (a === 't6-go') { P748.go = Date.now(); return; }
+  if (a === 'p748-other') { const o = $('t6-other'); if (o) act6.other = o.value; act6.p748o = !act6.p748o; if (!act6.p748o) act6.other = ''; refreshModal(); const i = act6.p748o && $('t6-other'); if (i) i.focus(); return; }
+  if (a === 'p748-dice') { const s = $('t6-sum'); if (s) act6.sum = s.value; act6.p748d = 1; refreshModal(); }
+}, true);
+/* итог: «Отправляется… → Нет связи → Ушло мастеру»; атака заклинанием — ещё ответ мастера и 60 с */
+setInterval(() => {
+  const A = act6; if (!pilot748() || !A || A.type !== 'abil' || !A.res) return;
+  const v = A.res.v7; if (!A.res.sent && !v) return;
+  const age = P72.since ? Date.now() - P72.since : 0;
+  const sig = [A.done, v ? v.rid : '', v ? !!V7.res[v.rid] : '', P72.since ? (age > 8000 ? 9 : 's') : 5, A.res.t747 && Date.now() - A.res.t747 > 60000].join('|');
+  if (sig === P748.sig) return;
+  P748.sig = sig;
+  const f = document.activeElement; if (f && f.closest && f.closest('#modal') && /INPUT|TEXTAREA/.test(f.tagName)) return;
+  refreshModal();
+}, 1000);
+(function () {
+  const css = `
+body.p748 #abilities .btn.a748{min-height:48px;min-width:132px;font-size:16px}
+body.p748 #abilities .r748{color:var(--gold);font-size:13px}
+body.p748-cb #tb740{display:none}
+body.p748-cb.tb740 #end67{display:block}
+body.p748 #end67{position:sticky;bottom:calc(74px + var(--safe-b, 0px));z-index:5;margin-top:12px;padding-top:8px}
+body.p748 #end67 .end-turn{width:100%;min-height:48px;font-size:16px;background:#1f3b39;border:1px solid #4fc3b4;color:#dff7f3;box-shadow:0 -6px 14px rgba(5,8,14,.55)}
+body.p748 #modal [data-act="t6-adv"],body.p748 #modal .dice2 .seg-btn{min-height:44px}
+#modal .scroll-title .c748{font-size:13px;font-weight:400;color:var(--ink-soft);white-space:nowrap}
+#modal .sv748{margin:10px 0 2px;font-size:14px;color:var(--ink)}
+#modal .chip747:disabled{opacity:.45}
+#modal .box748{padding:10px 12px;border-radius:10px;border:1px solid rgba(58,39,22,.35);background:rgba(58,39,22,.05)}
+#modal .box748 p{margin:4px 0}
+#modal .st748{margin-top:10px}
+`;
+  const st = document.createElement('style'); st.id = 'pilot748'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
