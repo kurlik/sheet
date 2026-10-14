@@ -4372,7 +4372,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 /* =====================================================================
    ЧАСТЬ 2: наборы, смена класса/расы, слоты, справочник, обучение, настройки
    ===================================================================== */
-const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.53.0';
+const SETTINGS_KEY = 'rpg_settings', TUT_KEY = 'rpg_tutorial_done', APP_VERSION = '7.54.0';
 let settings = { vibro: true, anim: true, bigFont: false, theme: 'a', awake: true, snd: false, sndVol: 2, vibEv: true, rat: true };
 try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { /* ignore */ }
 if (settings.theme === 'new') settings.theme = 'a';   // 7.33: вид до 7.33 убран, тема A «Тёмное фэнтези» (список тем — m84)
@@ -28507,6 +28507,95 @@ body.p753 .inv7-slots{min-height:44px;font-size:14px}
 body.p753 .meter-name,body.p753 .meter-val{font-size:15px}
 `;
   const st = document.createElement('style'); st.id = 'pilot753'; st.textContent = css; document.head.appendChild(st);
+})();
+/* =====================================================================
+   ВЫПУСК 7.54: «ВХОД В СЕССИЮ И МЕНЮ ☰» (путь Б, экран 6, проба за переключателем)
+   Состояния и решения: ux-research/audit-4/ekran-6/plan.md. Только вид: пункты меню и их data-act прежние,
+   их только раскладываем по группам с заголовками. Ни один пункт не пропадает: незнакомые уходят в «Ещё».
+   Включается в Настройках «Новый вид меню (проба)» (settings.pilot754, на этом телефоне), по умолчанию выключен.
+   Игрок: «Игра» (сессия, экран на стол, портрет) · «Лист» (копия, PIN, сброс) · «Помощь и приложение».
+   Мастер: «Игра» (экран на стол, итоги, тайное, правила, Оракул) · «Данные» (копия) · «Помощь и приложение».
+   Пункты 48 px. «Партия» мастера: когда игроки уже подключились, QR свёрнут в кнопку «Показать QR» (код виден всегда).
+   Окно «Подключиться к сессии»: поле кода крупно, 48 px.
+   ===================================================================== */
+const pilot754 = () => !!settings.pilot754;
+const M754 = { qr: false };
+
+const _openSettings754 = openSettings;
+openSettings = function () {
+  _openSettings754();
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const f = top.renderFn;
+  top.renderFn = () => f().replace('<p class="muted">Настройки хранятся', `<div role="button" tabindex="0" class="option set-row" data-act="set-toggle" data-k="pilot754"><span><b>Новый вид меню (проба)</b><span>Меню ☰ по группам «Игра», «Лист», «Помощь», крупнее пункты; у мастера QR сворачивается, когда игроки уже подключились. Пункты прежние. Выключите, чтобы вернуть старый вид.</span></span><i class="switch ${settings.pilot754 ? 'on' : ''}"></i></div>
+    <p class="muted">Настройки хранятся`);
+  refreshModal();
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-act="set-toggle"][data-k="pilot754"]'); if (el) setTimeout(() => { paint754(); if (appRole() === 'gm') renderGm(); else render(); }, 0); });
+
+function paint754() { document.body.classList.toggle('p754', pilot754()); }
+
+/* ---------- меню по группам ---------- */
+const G754 = {
+  player: [['Игра', ['ss-join', 'ss-leave', 'tv76-join', 'por76-open']], ['Лист', ['bk-open', 'change-pin', 'toggle-pin', '#note', 'reset']], ['Помощь и приложение', ['kb', 'tut-start', 'settings', 'role-change', 'about']]],
+  gm: [['Игра', ['tv76-open', 'rc-open', 'gm-unlock', 'gm-rules', 'orc-*']], ['Данные', ['bk-open']], ['Помощь и приложение', ['kb', 'tut-start', 'settings', 'role-change', 'about']]]
+};
+function group754(m, kind) {
+  if (!m || !pilot754() || m.querySelector('.g754')) return;
+  const items = [...m.children].filter(x => !x.classList.contains('menu-sep'));
+  const used = new Set(), frag = [];
+  const match = (x, k) => k === '#note' ? x.tagName === 'P' : k.endsWith('*') ? (x.dataset.act || '').startsWith(k.slice(0, -1)) : x.dataset.act === k;
+  G754[kind].forEach(([title, keys]) => {
+    const got = [];
+    keys.forEach(k => items.forEach(x => { if (!used.has(x) && match(x, k)) { used.add(x); got.push(x); } }));
+    if (got.length) frag.push([title, got]);
+  });
+  const rest = items.filter(x => !used.has(x));
+  if (rest.length) frag.push(['Ещё', rest]);
+  m.innerHTML = '';
+  frag.forEach(([title, got]) => {
+    const h = document.createElement('p'); h.className = 'g754'; h.textContent = title; m.appendChild(h);
+    got.forEach(x => { if (x.classList.contains('danger')) { const s = document.createElement('div'); s.className = 'menu-sep'; m.appendChild(s); } m.appendChild(x); });
+  });
+}
+const _renderMenu754 = renderMenu;
+renderMenu = function (locked) { _renderMenu754(locked); try { paint754(); if (menuOpen) group754($('menu'), 'player'); } catch (e) { console.error(e); } };
+const _renderGmMenu754 = renderGmMenu;
+renderGmMenu = function () { _renderGmMenu754(); try { paint754(); if (gmMenuOpen) group754($('gm-menu'), 'gm'); } catch (e) { console.error(e); } };
+
+/* ---------- «Партия» мастера: QR свёрнут, когда игроки уже есть ---------- */
+const _renderGmParty754 = renderGmParty;
+renderGmParty = function () {
+  _renderGmParty754();
+  try {
+    paint754();
+    const box = $('gm-party-body'), qr = box && box.querySelector('.qr-box');
+    const old = $('qr754'); if (old) old.remove();
+    if (!qr) return;
+    const hide = pilot754() && gm.players.length > 0 && !M754.qr;
+    const hint = qr.nextElementSibling && qr.nextElementSibling.matches('p.muted') ? qr.nextElementSibling : null;
+    qr.classList.toggle('hid754', hide); if (hint) hint.classList.toggle('hid754', hide);
+    if (!pilot754() || !gm.players.length) return;
+    qr.insertAdjacentHTML('beforebegin', `<button type="button" id="qr754" class="btn btn-sm" data-act="qr754" aria-expanded="${!hide}">${hide ? 'Показать QR для новых игроков' : 'Спрятать QR'}</button>`);
+  } catch (e) { console.error(e); }
+};
+document.addEventListener('click', e => { if (!e.target.closest('[data-act="qr754"]')) return; M754.qr = !M754.qr; renderGmParty(); });
+
+const _render754 = render;
+render = function () { _render754(); try { paint754(); } catch (e) { console.error(e); } };
+
+(() => {
+  const css = `
+body.p754 .g754{margin:10px 12px 2px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold,#c9a25c);opacity:.85}
+body.p754 .g754:first-child{margin-top:4px}
+body.p754 #menu .menu-item,body.p754 #gm-menu .menu-item{min-height:48px;font-size:16px}
+body.p754 #menu .menu-item span *,body.p754 #menu p{font-size:13px}
+body.p754 #menu,body.p754 #gm-menu{max-height:calc(100vh - 150px);overflow-y:auto;overscroll-behavior:contain}
+body.p754 .hid754{display:none!important}
+body.p754 #qr754{display:block;width:100%;min-height:44px;margin:8px 0;font-size:15px}
+body.p754 #ss-code{min-height:52px;font-size:22px;letter-spacing:.12em;text-align:center;text-transform:uppercase}
+body.p754 #ss-code::placeholder{font-size:15px;letter-spacing:normal;text-transform:none}
+`;
+  const st = document.createElement('style'); st.id = 'pilot754'; st.textContent = css; document.head.appendChild(st);
 })();
 </script>
 <script type="text/x-jsqr" id="jsqr-src">/*! jsQR 1.4.0 | Apache-2.0 | github.com/cozmo/jsQR */
