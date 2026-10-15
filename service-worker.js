@@ -1,5 +1,5 @@
 /* Critical Roll: офлайн и обновления. Меняйте VERSION при каждой выкладке index.html. */
-const VERSION = 'sheet-7.70.0';
+const VERSION = 'sheet-7.71.0';
 const APPV = VERSION.slice(6);   // та же версия, что APP_VERSION в index.html
 const CORE = ['./index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 const PAGE_HDR = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
@@ -31,7 +31,9 @@ self.addEventListener('install', e => {
         const old = await caches.match('./index.html');
         if (old) { const t = await old.text(); if (t.indexOf("APP_VERSION = '" + APPV + "'") >= 0) { page = t; await c.put(u, new Response(t, PAGE_HDR)); return; } }
       }
-      const res = await fetch(new Request(u, { cache: 'reload' }));
+      // 7.71: значки и манифест — с проверкой (cache: 'no-cache'): не менялись — сервер отвечает «304», и при каждом
+      // обновлении не качаются заново ≈0,77 МБ PNG. Страница по-прежнему мимо HTTP-кэша.
+      const res = await fetch(new Request(u, { cache: u === './index.html' ? 'reload' : 'no-cache' }));
       if (!res.ok) throw new Error(u + ' ' + res.status);
       if (u === './index.html') page = await res.clone().text();
       await c.put(u, res);
