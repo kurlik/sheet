@@ -33,5 +33,11 @@
       "auto"
     ]
   },
-  "handle_links": "preferred"
+  "handle_links": "preferred",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://kurlik.github.io/sheet/manifest.webmanifest"
+    }
+  ]
 }
